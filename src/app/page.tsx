@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const DEFAULT_SETTINGS: StoreSettings = {
   id: 1,
-  store_name: "Zoe",
+  store_name: "ZOÉ COSMETICS",
   wholesale_threshold: 100000,
   whatsapp_number: "573000000000",
   updated_at: new Date().toISOString(),

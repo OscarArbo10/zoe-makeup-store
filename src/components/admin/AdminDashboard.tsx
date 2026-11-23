@@ -148,7 +148,7 @@ export function AdminDashboard({
             </div>
             <div>
               <h1 className="font-[family-name:var(--font-playfair)] text-xl font-bold leading-none text-[#2D2226]">
-                {settings.store_name || "Zoe"} Admin
+                {settings.store_name || "ZOÉ COSMETICS"} Admin
               </h1>
               <p className="mt-0.5 text-[11px] text-[#2D2226]/60">{userEmail}</p>
             </div>
@@ -245,7 +245,7 @@ export function AdminDashboard({
         {activeTab === "orders" && (
           <OrdersTab
             orders={orders}
-            storeName={settings.store_name || "Zoe"}
+            storeName={settings.store_name || "ZOÉ COSMETICS"}
             onRefresh={refreshAll}
           />
         )}

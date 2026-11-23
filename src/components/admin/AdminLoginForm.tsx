@@ -77,7 +77,7 @@ export function AdminLoginForm() {
               />
             </div>
             <h1 className="mt-4 font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#2D2226]">
-              Panel Administrativo Zoe
+              Panel Administrativo ZOÉ COSMETICS
             </h1>
             <p className="mt-1 text-xs text-[#2D2226]/65">
               Inicia sesión con tu cuenta de administradora

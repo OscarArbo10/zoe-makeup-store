@@ -12,7 +12,9 @@ interface SettingsTabProps {
 }
 
 export function SettingsTab({ settings, onRefresh }: SettingsTabProps) {
-  const [storeName, setStoreName] = useState(settings.store_name || "Zoe");
+  const [storeName, setStoreName] = useState(
+    settings.store_name || "ZOÉ COSMETICS"
+  );
   const [wholesaleThreshold, setWholesaleThreshold] = useState(
     String(settings.wholesale_threshold ?? 100000)
   );
@@ -45,7 +47,7 @@ export function SettingsTab({ settings, onRefresh }: SettingsTabProps) {
       const { error } = await supabase
         .from("store_settings")
         .update({
-          store_name: storeName.trim() || "Zoe",
+          store_name: storeName.trim() || "ZOÉ COSMETICS",
           wholesale_threshold: thresholdValue,
           whatsapp_number: cleanWhatsApp,
           updated_at: new Date().toISOString(),
@@ -132,7 +134,7 @@ export function SettingsTab({ settings, onRefresh }: SettingsTabProps) {
             <strong className="text-[#D85C8A]">
               {formatCOP(Number(wholesaleThreshold) || 0)}
             </strong>{" "}
-            en subtotal al detal.
+            en subtotal al por mayor.
           </p>
         </div>
 

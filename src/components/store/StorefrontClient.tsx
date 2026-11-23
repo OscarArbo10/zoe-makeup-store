@@ -145,7 +145,7 @@ export function StorefrontClient({
 
   const wholesaleThreshold = settings.wholesale_threshold ?? 100000;
   const wholesaleActive =
-    cartItems.length > 0 && retailSubtotal >= wholesaleThreshold;
+    cartItems.length > 0 && wholesaleSubtotal >= wholesaleThreshold;
   const totalItemsCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
   const activeTotal = wholesaleActive ? wholesaleSubtotal : retailSubtotal;
 
@@ -219,9 +219,9 @@ export function StorefrontClient({
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-2">
           <Sparkles className="h-3.5 w-3.5 shrink-0 animate-pulse" />
           <span>
-            Activa <strong>precios al por mayor</strong> automáticamente en
-            compras desde{" "}
-            <strong>{formatCOP(wholesaleThreshold)}</strong> al detal
+            Activa <strong>precios al por mayor</strong> automáticamente al
+            alcanzar <strong>{formatCOP(wholesaleThreshold)}</strong> en precio
+            al por mayor
           </span>
         </div>
       </div>
@@ -234,16 +234,16 @@ export function StorefrontClient({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/zoe-logo.jpg"
-                alt={`Logo ${settings.store_name || "Zoe"}`}
+                alt={`Logo ${settings.store_name || "ZOÉ COSMETICS"}`}
                 className="h-full w-full object-cover"
               />
             </div>
             <div>
-              <span className="block font-[family-name:var(--font-playfair)] text-2xl font-bold leading-none tracking-tight text-[#2D2226]">
-                {settings.store_name || "Zoe"}
+              <span className="block font-[family-name:var(--font-playfair)] text-xl font-bold leading-none tracking-tight text-[#2D2226] sm:text-2xl">
+                {settings.store_name || "ZOÉ COSMETICS"}
               </span>
               <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#B94470]">
-                Makeup Studio
+                Maquillaje & Belleza
               </span>
             </div>
           </Link>
@@ -305,9 +305,9 @@ export function StorefrontClient({
               <strong className="font-semibold text-[#2D2226]">
                 {formatCOP(wholesaleThreshold)}
               </strong>{" "}
-              al detal, todo tu pedido cambia automáticamente a{" "}
+              en precio al por mayor, todo tu pedido cambia automáticamente a{" "}
               <strong className="font-semibold text-[#D85C8A]">
-                precio al por mayor
+                tarifa mayorista
               </strong>
               .
             </p>
@@ -383,9 +383,11 @@ export function StorefrontClient({
                 <span className="text-[#2D2226]/80">
                   Te faltan{" "}
                   <strong className="text-[#D85C8A]">
-                    {formatCOP(Math.max(0, wholesaleThreshold - retailSubtotal))}
+                    {formatCOP(
+                      Math.max(0, wholesaleThreshold - wholesaleSubtotal)
+                    )}
                   </strong>{" "}
-                  para activar precios al por mayor.
+                  en precio mayorista para activar tarifa al por mayor.
                 </span>
               )}
             </div>
@@ -454,7 +456,7 @@ export function StorefrontClient({
             <p>
               © {new Date().getFullYear()}{" "}
               <strong className="font-semibold text-[#2D2226]">
-                {settings.store_name || "Zoe"}
+                {settings.store_name || "ZOÉ COSMETICS"}
               </strong>
               . Todos los derechos reservados.
             </p>

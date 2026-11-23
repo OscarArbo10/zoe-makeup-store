@@ -15,7 +15,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Zoe | Tienda de Maquillaje",
+  title: "ZOÉ COSMETICS | Tienda de Maquillaje",
   description:
     "Maquillaje al detal y al por mayor. Elige tus tonos favoritos y realiza tu pedido fácil por WhatsApp.",
   icons: {

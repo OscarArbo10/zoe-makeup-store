@@ -70,15 +70,15 @@ export function CartDrawer({
   );
 
   const appliedWholesale =
-    items.length > 0 && retailSubtotal >= wholesaleThreshold;
+    items.length > 0 && wholesaleSubtotal >= wholesaleThreshold;
   const totalAmount = appliedWholesale ? wholesaleSubtotal : retailSubtotal;
   const savings = appliedWholesale
     ? Math.max(0, retailSubtotal - wholesaleSubtotal)
     : 0;
-  const remaining = Math.max(0, wholesaleThreshold - retailSubtotal);
+  const remaining = Math.max(0, wholesaleThreshold - wholesaleSubtotal);
   const progressPercent =
     wholesaleThreshold > 0
-      ? Math.min(100, Math.round((retailSubtotal / wholesaleThreshold) * 100))
+      ? Math.min(100, Math.round((wholesaleSubtotal / wholesaleThreshold) * 100))
       : 100;
 
   const handleCheckout = async (e: React.FormEvent) => {
@@ -169,7 +169,7 @@ export function CartDrawer({
       }
 
       const whatsappUrl = buildWhatsAppOrderUrl(settings.whatsapp_number, {
-        storeName: settings.store_name || "Zoe",
+        storeName: settings.store_name || "ZOÉ COSMETICS",
         orderNumber,
         customerName: trimmedName,
         customerPhone: trimmedPhone,
@@ -329,7 +329,8 @@ export function CartDrawer({
             </h3>
             <p className="mt-1.5 max-w-xs text-sm text-[#2D2226]/65">
               Explora nuestros productos, elige tus tonos favoritos y activa
-              precios al por mayor desde {formatCOP(wholesaleThreshold)}.
+              precios al por mayor al alcanzar {formatCOP(wholesaleThreshold)}{" "}
+              en valor mayorista.
             </p>
             <button
               type="button"
@@ -365,7 +366,7 @@ export function CartDrawer({
                       <strong className="font-bold text-[#D85C8A]">
                         {formatCOP(remaining)}
                       </strong>{" "}
-                      para activar precios al por mayor
+                      en precio mayorista para desbloquear tarifa al por mayor
                     </span>
                     <span className="font-semibold text-[#B94470]">
                       {progressPercent}%
@@ -378,8 +379,8 @@ export function CartDrawer({
                     />
                   </div>
                   <p className="mt-1.5 text-[11px] text-[#2D2226]/60">
-                    Compra mínima mayorista: {formatCOP(wholesaleThreshold)} en
-                    valor al detal.
+                    Mínimo mayorista: {formatCOP(wholesaleThreshold)} en valor
+                    al por mayor (llevas {formatCOP(wholesaleSubtotal)}).
                   </p>
                 </div>
               )}
