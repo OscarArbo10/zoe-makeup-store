@@ -110,20 +110,58 @@ body {
   }
 }
 
+@keyframes zoeOrbDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(-16px, 14px, 0) scale(1.1);
+    opacity: 0.78;
+  }
+}
+
+@keyframes zoeOrbDriftReverse {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate3d(18px, -14px, 0) scale(1.12);
+    opacity: 0.65;
+  }
+}
+
 .animate-zoe-float {
-  animation: zoeFloatSlow 6s ease-in-out infinite;
+  animation: zoeFloatSlow 5.2s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-zoe-float-reverse {
-  animation: zoeFloatReverse 7.5s ease-in-out infinite;
+  animation: zoeFloatReverse 6.4s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-zoe-twinkle {
-  animation: zoeTwinkle 3.4s ease-in-out infinite;
+  animation: zoeTwinkle 3s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .animate-zoe-orbit-pulse {
-  animation: zoeOrbitPulse 4.5s ease-in-out infinite;
+  animation: zoeOrbitPulse 4.2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-zoe-orb-drift {
+  animation: zoeOrbDrift 8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-zoe-orb-drift-reverse {
+  animation: zoeOrbDriftReverse 9.5s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .animate-zoe-shimmer {
@@ -140,6 +178,8 @@ body {
   .animate-zoe-float-reverse,
   .animate-zoe-twinkle,
   .animate-zoe-orbit-pulse,
+  .animate-zoe-orb-drift,
+  .animate-zoe-orb-drift-reverse,
   .animate-zoe-shimmer,
   .animate-zoe-pop-in {
     animation: none !important;

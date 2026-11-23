@@ -30,8 +30,30 @@ export function DynamicHeroDecor() {
       setOffset({ x: nx, y: ny });
     };
 
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      const nx = (touch.clientX / window.innerWidth - 0.5) * 2;
+      const ny = (touch.clientY / window.innerHeight - 0.5) * 2;
+      setOffset({ x: nx, y: ny });
+    };
+
+    const handleScroll = () => {
+      const progress = Math.min(window.scrollY / 320, 1.5);
+      setOffset((prev) => ({
+        x: prev.x,
+        y: Math.max(-1.2, Math.min(1.2, progress - 0.2)),
+      }));
+    };
+
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   return (
@@ -39,97 +61,99 @@ export function DynamicHeroDecor() {
       className="pointer-events-none absolute inset-0 overflow-hidden"
       aria-hidden="true"
     >
-      {/* Orbes pastel difuminados con paralaje suave */}
+      {/* Orbes pastel difuminados con animación propia + paralaje suave */}
       <div
-        className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#FAD4E4]/55 blur-3xl transition-transform duration-700 ease-out"
+        className="absolute -right-24 -top-24 transition-transform duration-700 ease-out"
         style={{
           transform: `translate3d(${offset.x * -18}px, ${offset.y * -14}px, 0)`,
         }}
-      />
+      >
+        <div className="animate-zoe-orb-drift h-64 w-64 rounded-full bg-[#FAD4E4]/60 blur-3xl sm:h-80 sm:w-80" />
+      </div>
       <div
-        className="absolute -left-24 bottom-0 h-72 w-72 rounded-full bg-[#F9A8D4]/30 blur-3xl transition-transform duration-700 ease-out"
+        className="absolute -left-24 bottom-0 transition-transform duration-700 ease-out"
         style={{
           transform: `translate3d(${offset.x * 16}px, ${offset.y * 12}px, 0)`,
         }}
-      />
+      >
+        <div className="animate-zoe-orb-drift-reverse h-56 w-56 rounded-full bg-[#F9A8D4]/35 blur-3xl sm:h-72 sm:w-72" />
+      </div>
 
-      {/* Burbujas glossy rosadas flotantes (inspiradas en el efecto burbuja del logo) */}
+      {/* Burbujas glossy rosadas flotantes (visibles en móvil y escritorio) */}
       <div
-        className="absolute left-[8%] top-[18%] hidden sm:block transition-transform duration-500 ease-out"
+        className="absolute left-[4%] top-[12%] sm:left-[8%] sm:top-[18%] transition-transform duration-500 ease-out"
         style={{
           transform: `translate3d(${offset.x * 14}px, ${offset.y * 10}px, 0)`,
         }}
       >
-        <div className="animate-zoe-float relative h-12 w-12 rounded-full border border-white/80 bg-gradient-to-br from-[#FFAED4]/70 via-[#FAD4E4]/55 to-white/80 shadow-[inset_-4px_-6px_12px_rgba(216,92,138,0.18),0_8px_20px_rgba(216,92,138,0.12)]">
-          <span className="absolute left-2.5 top-2 h-2.5 w-4 rotate-[-28deg] rounded-full bg-white/85" />
+        <div className="animate-zoe-float relative h-9 w-9 sm:h-12 sm:w-12 rounded-full border border-white/80 bg-gradient-to-br from-[#FFAED4]/70 via-[#FAD4E4]/55 to-white/80 shadow-[inset_-4px_-6px_12px_rgba(216,92,138,0.18),0_8px_20px_rgba(216,92,138,0.12)]">
+          <span className="absolute left-2 top-1.5 h-2 w-3 sm:left-2.5 sm:top-2 sm:h-2.5 sm:w-4 rotate-[-28deg] rounded-full bg-white/85" />
         </div>
       </div>
 
       <div
-        className="absolute right-[10%] top-[22%] hidden sm:block transition-transform duration-500 ease-out"
+        className="absolute right-[4%] top-[14%] sm:right-[10%] sm:top-[22%] transition-transform duration-500 ease-out"
         style={{
           transform: `translate3d(${offset.x * -16}px, ${offset.y * 12}px, 0)`,
         }}
       >
         <div
-          className="animate-zoe-float-reverse relative h-16 w-16 rounded-full border border-white/85 bg-gradient-to-br from-[#FF9ECE]/55 via-[#FFF1F5]/75 to-white/90 shadow-[inset_-5px_-7px_14px_rgba(216,92,138,0.16),0_10px_24px_rgba(216,92,138,0.10)]"
+          className="animate-zoe-float-reverse relative h-11 w-11 sm:h-16 sm:w-16 rounded-full border border-white/85 bg-gradient-to-br from-[#FF9ECE]/55 via-[#FFF1F5]/75 to-white/90 shadow-[inset_-5px_-7px_14px_rgba(216,92,138,0.16),0_10px_24px_rgba(216,92,138,0.10)]"
           style={{ animationDelay: "0.8s" }}
         >
-          <span className="absolute left-3 top-2.5 h-3 w-5 rotate-[-25deg] rounded-full bg-white/90" />
+          <span className="absolute left-2.5 top-2 h-2.5 w-3.5 sm:left-3 sm:top-2.5 sm:h-3 sm:w-5 rotate-[-25deg] rounded-full bg-white/90" />
         </div>
       </div>
 
       <div
-        className="absolute bottom-[16%] left-[14%] hidden md:block transition-transform duration-500 ease-out"
+        className="absolute bottom-[10%] left-[6%] sm:bottom-[16%] sm:left-[14%] transition-transform duration-500 ease-out"
         style={{
           transform: `translate3d(${offset.x * 12}px, ${offset.y * -12}px, 0)`,
         }}
       >
         <div
-          className="animate-zoe-float-reverse relative h-9 w-9 rounded-full border border-white/80 bg-gradient-to-br from-[#D85C8A]/30 via-[#FAD4E4]/65 to-white/85 shadow-sm"
+          className="animate-zoe-float-reverse relative h-7 w-7 sm:h-9 sm:w-9 rounded-full border border-white/80 bg-gradient-to-br from-[#D85C8A]/30 via-[#FAD4E4]/65 to-white/85 shadow-sm"
           style={{ animationDelay: "1.5s" }}
         >
-          <span className="absolute left-2 top-1.5 h-1.5 w-2.5 rotate-[-28deg] rounded-full bg-white/90" />
+          <span className="absolute left-1.5 top-1 h-1.5 w-2 sm:left-2 sm:top-1.5 sm:w-2.5 rotate-[-28deg] rounded-full bg-white/90" />
         </div>
       </div>
 
       <div
-        className="absolute bottom-[18%] right-[14%] hidden md:block transition-transform duration-500 ease-out"
+        className="absolute bottom-[12%] right-[6%] sm:bottom-[18%] sm:right-[14%] transition-transform duration-500 ease-out"
         style={{
           transform: `translate3d(${offset.x * -12}px, ${offset.y * -10}px, 0)`,
         }}
       >
         <div
-          className="animate-zoe-float relative h-10 w-10 rounded-full border border-white/80 bg-gradient-to-br from-[#FFAED4]/60 to-white/90 shadow-sm"
+          className="animate-zoe-float relative h-8 w-8 sm:h-10 sm:w-10 rounded-full border border-white/80 bg-gradient-to-br from-[#FFAED4]/60 to-white/90 shadow-sm"
           style={{ animationDelay: "2s" }}
         >
-          <span className="absolute left-2 top-1.5 h-2 w-3 rotate-[-25deg] rounded-full bg-white/90" />
+          <span className="absolute left-1.5 top-1.5 h-1.5 w-2.5 sm:left-2 sm:h-2 sm:w-3 rotate-[-25deg] rounded-full bg-white/90" />
         </div>
       </div>
 
       {/* Destellos 4 puntas (✦) exactamente como los del logo de Zoe */}
       <div
-        className="absolute left-[18%] top-[28%] text-[#D85C8A]/65 transition-transform duration-500"
+        className="absolute left-[14%] top-[24%] sm:left-[18%] sm:top-[28%] text-[#D85C8A]/65 transition-transform duration-500"
         style={{
           transform: `translate3d(${offset.x * 20}px, ${offset.y * 14}px, 0)`,
         }}
       >
-        <FourPointSparkle className="animate-zoe-twinkle h-6 w-6" />
+        <FourPointSparkle className="animate-zoe-twinkle h-5 w-5 sm:h-6 sm:w-6" />
       </div>
 
       <div
-        className="absolute right-[20%] top-[34%] text-[#D85C8A]/75 transition-transform duration-500"
+        className="absolute right-[15%] top-[28%] sm:right-[20%] sm:top-[34%] text-[#D85C8A]/75 transition-transform duration-500"
         style={{
           transform: `translate3d(${offset.x * -22}px, ${offset.y * 16}px, 0)`,
         }}
       >
-        <FourPointSparkle
-          className="animate-zoe-twinkle h-7 w-7"
-        />
+        <FourPointSparkle className="animate-zoe-twinkle h-6 w-6 sm:h-7 sm:w-7" />
       </div>
 
       <div
-        className="absolute left-[26%] bottom-[22%] text-[#F472B6]/60 hidden sm:block transition-transform duration-500"
+        className="absolute left-[18%] bottom-[20%] sm:left-[26%] sm:bottom-[22%] text-[#F472B6]/65 transition-transform duration-500"
         style={{
           transform: `translate3d(${offset.x * 16}px, ${offset.y * -14}px, 0)`,
         }}
@@ -138,12 +162,12 @@ export function DynamicHeroDecor() {
       </div>
 
       <div
-        className="absolute right-[24%] bottom-[24%] text-[#D85C8A]/55 hidden sm:block transition-transform duration-500"
+        className="absolute right-[18%] bottom-[22%] sm:right-[24%] sm:bottom-[24%] text-[#D85C8A]/60 transition-transform duration-500"
         style={{
           transform: `translate3d(${offset.x * -18}px, ${offset.y * -12}px, 0)`,
         }}
       >
-        <FourPointSparkle className="animate-zoe-twinkle h-5 w-5" />
+        <FourPointSparkle className="animate-zoe-twinkle h-4 w-4 sm:h-5 sm:w-5" />
       </div>
 
       {/* Tarjeta flotante de tono (mini swatch dinámico decorativo) */}
