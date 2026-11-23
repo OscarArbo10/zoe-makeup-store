@@ -44,3 +44,104 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #d85c8a;
 }
+
+/* Objetos dinámicos y micro-animaciones Zoe */
+@keyframes zoeFloatSlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) rotate(4deg);
+  }
+}
+
+@keyframes zoeFloatReverse {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(6px, 12px, 0) rotate(-5deg);
+  }
+}
+
+@keyframes zoeTwinkle {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.82) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18) rotate(12deg);
+  }
+}
+
+@keyframes zoeOrbitPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+@keyframes zoeShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes zoePopIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-zoe-float {
+  animation: zoeFloatSlow 6s ease-in-out infinite;
+}
+
+.animate-zoe-float-reverse {
+  animation: zoeFloatReverse 7.5s ease-in-out infinite;
+}
+
+.animate-zoe-twinkle {
+  animation: zoeTwinkle 3.4s ease-in-out infinite;
+}
+
+.animate-zoe-orbit-pulse {
+  animation: zoeOrbitPulse 4.5s ease-in-out infinite;
+}
+
+.animate-zoe-shimmer {
+  background-size: 200% 100%;
+  animation: zoeShimmer 3.2s linear infinite;
+}
+
+.animate-zoe-pop-in {
+  animation: zoePopIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-zoe-float,
+  .animate-zoe-float-reverse,
+  .animate-zoe-twinkle,
+  .animate-zoe-orbit-pulse,
+  .animate-zoe-shimmer,
+  .animate-zoe-pop-in {
+    animation: none !important;
+  }
+}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Heart, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, Loader2, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isAdminUser } from "@/lib/supabase/auth";
 
@@ -68,8 +68,13 @@ export function AdminLoginForm() {
 
         <div className="rounded-3xl border border-[#FAD4E4] bg-white p-7 shadow-[0_14px_40px_rgb(216,92,138,0.10)] sm:p-8">
           <div className="flex flex-col items-center text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF1F5] text-[#D85C8A] ring-1 ring-[#FAD4E4]">
-              <Heart className="h-6 w-6 fill-[#D85C8A]/20" />
+            <div className="h-20 w-20 overflow-hidden rounded-3xl border-2 border-[#FAD4E4] bg-[#FFA6DA] shadow-md shadow-[#D85C8A]/15">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/zoe-logo.jpg"
+                alt="Logo Zoe"
+                className="h-full w-full object-cover"
+              />
             </div>
             <h1 className="mt-4 font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#2D2226]">
               Panel Administrativo Zoe

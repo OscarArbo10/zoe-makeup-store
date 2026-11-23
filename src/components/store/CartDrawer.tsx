@@ -373,7 +373,7 @@ export function CartDrawer({
                   </div>
                   <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#FAD4E4]/65">
                     <div
-                      className="h-full rounded-full bg-[#D85C8A] transition-all duration-300"
+                      className="animate-zoe-shimmer h-full rounded-full bg-gradient-to-r from-[#D85C8A] via-[#F48FB1] to-[#D85C8A] transition-all duration-500"
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>

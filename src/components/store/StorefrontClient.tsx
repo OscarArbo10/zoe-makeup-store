@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
-  Heart,
+  CheckCircle2,
   Search,
   ShoppingBag,
   Sparkles,
@@ -20,6 +20,7 @@ import type {
 import { formatCOP } from "@/lib/format";
 import { ProductCard } from "./ProductCard";
 import { CartDrawer } from "./CartDrawer";
+import { DynamicHeroDecor } from "./DynamicHeroDecor";
 
 const CART_STORAGE_KEY = "zoe_makeup_cart_v1";
 const CART_CHANGE_EVENT = "zoe-cart-change";
@@ -84,6 +85,12 @@ export function StorefrontClient({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
+  const [toast, setToast] = useState<{
+    productName: string;
+    shadeName: string;
+    shadeHex: string;
+  } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cartItems = useSyncExternalStore(
     subscribeToCart,
@@ -175,6 +182,14 @@ export function StorefrontClient({
         },
       ];
     });
+
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({
+      productName: product.name,
+      shadeName: variant.shade_name,
+      shadeHex: variant.shade_hex || "#F48FB1",
+    });
+    toastTimerRef.current = setTimeout(() => setToast(null), 2800);
   };
 
   const handleUpdateQuantity = (key: string, delta: number) => {
@@ -199,10 +214,10 @@ export function StorefrontClient({
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-[#2D2226]">
-      {/* Barra superior de beneficio mayorista */}
-      <div className="bg-[#D85C8A] px-4 py-2 text-center text-xs font-medium text-white sm:text-sm">
+      {/* Barra superior de beneficio mayorista con brillo sutil */}
+      <div className="animate-zoe-shimmer bg-gradient-to-r from-[#D85C8A] via-[#E879A5] to-[#D85C8A] px-4 py-2 text-center text-xs font-medium text-white sm:text-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+          <Sparkles className="h-3.5 w-3.5 shrink-0 animate-pulse" />
           <span>
             Activa <strong>precios al por mayor</strong> automáticamente en
             compras desde{" "}
@@ -213,10 +228,15 @@ export function StorefrontClient({
 
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-[#FAD4E4]/80 bg-white/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FFF1F5] text-[#D85C8A] ring-1 ring-[#FAD4E4]">
-              <Heart className="h-5 w-5 fill-[#D85C8A]/20" />
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <Link href="/" className="group flex items-center gap-3">
+            <div className="relative h-11 w-11 overflow-hidden rounded-2xl border-2 border-[#FAD4E4] bg-[#FFA6DA] shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/zoe-logo.jpg"
+                alt={`Logo ${settings.store_name || "Zoe"}`}
+                className="h-full w-full object-cover"
+              />
             </div>
             <div>
               <span className="block font-[family-name:var(--font-playfair)] text-2xl font-bold leading-none tracking-tight text-[#2D2226]">
@@ -232,7 +252,7 @@ export function StorefrontClient({
             <button
               type="button"
               onClick={() => setCartOpen(true)}
-              className="relative flex cursor-pointer items-center gap-2.5 rounded-2xl bg-[#FFF1F5] px-4 py-2.5 text-sm font-semibold text-[#2D2226] ring-1 ring-[#FAD4E4] transition-all hover:bg-[#FAD4E4]/50"
+              className="relative flex cursor-pointer items-center gap-2.5 rounded-2xl bg-[#FFF1F5] px-4 py-2.5 text-sm font-semibold text-[#2D2226] ring-1 ring-[#FAD4E4] transition-all hover:-translate-y-0.5 hover:bg-[#FAD4E4]/50 hover:shadow-sm"
             >
               <ShoppingBag className="h-4 w-4 text-[#D85C8A]" />
               <span className="hidden sm:inline">Carrito</span>
@@ -251,14 +271,26 @@ export function StorefrontClient({
         </div>
       </header>
 
-      {/* Hero femenino pastel */}
+      {/* Hero femenino pastel con logo destacado y objetos dinámicos */}
       <section className="relative overflow-hidden border-b border-[#FAD4E4]/60 bg-gradient-to-b from-[#FFF1F5] via-[#FFF8FA] to-white">
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#FAD4E4]/45 blur-3xl" />
-        <div className="pointer-events-none absolute -left-24 bottom-0 h-64 w-64 rounded-full bg-[#FAD4E4]/35 blur-3xl" />
+        <DynamicHeroDecor />
 
         <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FAD4E4] bg-white px-3.5 py-1 text-xs font-semibold text-[#B94470] shadow-xs">
+            {/* Medallón animado del logo Zoe */}
+            <div className="relative mx-auto mb-6 flex w-fit items-center justify-center">
+              <div className="animate-zoe-orbit-pulse absolute -inset-3 rounded-[2.2rem] bg-gradient-to-tr from-[#FAD4E4] via-[#FFAED4]/50 to-[#FFF1F5] blur-xl" />
+              <div className="animate-zoe-float relative h-28 w-28 overflow-hidden rounded-[2rem] border-4 border-white bg-[#FFA6DA] shadow-[0_16px_40px_rgba(216,92,138,0.25)] sm:h-32 sm:w-32">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/zoe-logo.jpg"
+                  alt={`Logo ${settings.store_name || "Zoe"}`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FAD4E4] bg-white/90 px-3.5 py-1 text-xs font-semibold text-[#B94470] shadow-xs backdrop-blur-xs">
               <Tag className="h-3.5 w-3.5" />
               Detal y Mayorista en un solo carrito
             </span>
@@ -412,13 +444,21 @@ export function StorefrontClient({
       {/* Footer */}
       <footer className="mt-12 border-t border-[#FAD4E4]/70 bg-[#FFF1F5]/50">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-[#2D2226]/65 sm:flex-row sm:px-6 lg:px-8">
-          <p>
-            © {new Date().getFullYear()}{" "}
-            <strong className="font-semibold text-[#2D2226]">
-              {settings.store_name || "Zoe"}
-            </strong>
-            . Todos los derechos reservados.
-          </p>
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/zoe-logo.jpg"
+              alt="Zoe"
+              className="h-7 w-7 rounded-lg border border-[#FAD4E4] object-cover"
+            />
+            <p>
+              © {new Date().getFullYear()}{" "}
+              <strong className="font-semibold text-[#2D2226]">
+                {settings.store_name || "Zoe"}
+              </strong>
+              . Todos los derechos reservados.
+            </p>
+          </div>
           <Link
             href="/admin"
             className="font-medium text-[#B94470]/80 transition-colors hover:text-[#D85C8A]"
@@ -427,6 +467,38 @@ export function StorefrontClient({
           </Link>
         </div>
       </footer>
+
+      {/* Toast dinámico al agregar un tono al carrito */}
+      {toast && !cartOpen && (
+        <div className="animate-zoe-pop-in fixed bottom-20 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-[#FAD4E4] bg-white/95 px-4 py-3 shadow-[0_12px_36px_rgba(216,92,138,0.22)] backdrop-blur-md sm:bottom-6 sm:left-auto sm:right-6 sm:translate-x-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-xs"
+              style={{ backgroundColor: toast.shadeHex }}
+            >
+              <CheckCircle2 className="h-4 w-4 text-white drop-shadow-xs" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold text-[#2D2226]">
+                {toast.productName}
+              </p>
+              <p className="truncate text-[11px] text-[#B94470]">
+                Tono: {toast.shadeName} agregado
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setToast(null);
+              setCartOpen(true);
+            }}
+            className="shrink-0 cursor-pointer rounded-xl bg-[#D85C8A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#B94470]"
+          >
+            Ver
+          </button>
+        </div>
+      )}
 
       {/* Botón flotante móvil del carrito */}
       {totalItemsCount > 0 && !cartOpen && (

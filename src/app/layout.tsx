@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   title: "Zoe | Tienda de Maquillaje",
   description:
     "Maquillaje al detal y al por mayor. Elige tus tonos favoritos y realiza tu pedido fácil por WhatsApp.",
+  icons: {
+    icon: "/zoe-logo.jpg",
+    apple: "/zoe-logo.jpg",
+  },
 };
 
 export default function RootLayout({
