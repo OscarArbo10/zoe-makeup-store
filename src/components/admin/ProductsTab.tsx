@@ -528,7 +528,7 @@ export function ProductsTab({
       {/* Encabezado */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#2D2226]">
+          <h2 className="text-2xl font-extrabold tracking-tight text-[#2D2226]">
             Productos y Tonos
           </h2>
           <p className="text-xs text-[#2D2226]/65 sm:text-sm">
@@ -812,7 +812,7 @@ export function ProductsTab({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D2226]/45 p-4 backdrop-blur-[2px]">
           <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[#FAD4E4] bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#FAD4E4]/70 pb-3">
-              <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-[#2D2226]">
+              <h3 className="text-xl font-extrabold tracking-tight text-[#2D2226]">
                 {productForm.id ? "Editar producto" : "Nuevo producto"}
               </h3>
               <button
@@ -1183,7 +1183,7 @@ export function ProductsTab({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D2226]/45 p-4 backdrop-blur-[2px]">
           <div className="w-full max-w-md rounded-3xl border border-[#FAD4E4] bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#FAD4E4]/70 pb-3">
-              <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-[#2D2226]">
+              <h3 className="text-xl font-extrabold tracking-tight text-[#2D2226]">
                 {variantForm.id ? "Editar tono" : "Nuevo tono"}
               </h3>
               <button

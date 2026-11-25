@@ -92,7 +92,7 @@ export function SettingsTab({
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#2D2226]">
+        <h2 className="text-2xl font-extrabold tracking-tight text-[#2D2226]">
           Configuración de la tienda
         </h2>
         <p className="text-xs text-[#2D2226]/65 sm:text-sm">

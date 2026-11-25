@@ -18,10 +18,14 @@ import {
   ChevronRight,
   LayoutGrid,
   Menu,
+  MessageCircle,
   Search,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
+  Store,
   Tag,
+  Truck,
   X,
 } from "lucide-react";
 import type {
@@ -473,7 +477,7 @@ export function StorefrontClient({
                   </div>
                 )}
                 <div>
-                  <p className="font-[family-name:var(--font-playfair)] text-base font-bold leading-tight text-[#2D2226]">
+                  <p className="text-base font-extrabold leading-tight tracking-tight text-[#2D2226]">
                     {menuBrand ? menuBrand.name : "Marcas"}
                   </p>
                   <p className="text-[11px] text-[#B94470]">
@@ -663,7 +667,7 @@ export function StorefrontClient({
                             {featuredBrandName}
                           </p>
                         )}
-                        <h2 className="font-[family-name:var(--font-playfair)] text-xl font-bold leading-snug text-[#2D2226] sm:text-2xl">
+                        <h2 className="text-xl font-extrabold leading-snug tracking-tight text-[#2D2226] sm:text-2xl">
                           {featuredProduct.name}
                         </h2>
                       </div>
@@ -706,6 +710,64 @@ export function StorefrontClient({
         </div>
       </section>
 
+      {/* Beneficios / Sellos de confianza */}
+      <section
+        aria-label="Beneficios de comprar en ZOÉ COSMETICS"
+        className="border-b border-[#FAD4E4]/60 bg-[#FFF1F5]/70"
+      >
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <div className="rounded-2xl border border-[#FAD4E4]/80 bg-white p-3.5 shadow-[0_4px_16px_rgba(216,92,138,0.08)] sm:p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#E879A5] to-[#D85C8A] text-white shadow-xs">
+                <Truck className="h-5 w-5" />
+              </div>
+              <p className="mt-2.5 text-xs font-extrabold text-[#2D2226] sm:text-sm">
+                Envíos a toda Colombia
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[#2D2226]/65 sm:text-xs">
+                Recíbelo en tu casa.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-[#FAD4E4]/80 bg-white p-3.5 shadow-[0_4px_16px_rgba(216,92,138,0.08)] sm:p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#E879A5] to-[#D85C8A] text-white shadow-xs">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <p className="mt-2.5 text-xs font-extrabold text-[#2D2226] sm:text-sm">
+                Compra segura
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[#2D2226]/65 sm:text-xs">
+                Productos originales.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-[#FAD4E4]/80 bg-white p-3.5 shadow-[0_4px_16px_rgba(216,92,138,0.08)] sm:p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#E879A5] to-[#D85C8A] text-white shadow-xs">
+                <MessageCircle className="h-5 w-5" />
+              </div>
+              <p className="mt-2.5 text-xs font-extrabold text-[#2D2226] sm:text-sm">
+                Asesoría por WhatsApp
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[#2D2226]/65 sm:text-xs">
+                Te ayudamos a elegir.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-[#FAD4E4]/80 bg-white p-3.5 shadow-[0_4px_16px_rgba(216,92,138,0.08)] sm:p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#E879A5] to-[#D85C8A] text-white shadow-xs">
+                <Store className="h-5 w-5" />
+              </div>
+              <p className="mt-2.5 text-xs font-extrabold text-[#2D2226] sm:text-sm">
+                Ideal para emprender
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[#2D2226]/65 sm:text-xs">
+                Tu proveedor de belleza de confianza.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Catálogo limpio: buscador + cuadrícula */}
       <main
         id="catalogo"
@@ -713,7 +775,7 @@ export function StorefrontClient({
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#2D2226]">
+            <h2 className="text-2xl font-extrabold tracking-tight text-[#2D2226]">
               Catálogo
             </h2>
             {activeFilterLabel ? (
@@ -768,13 +830,13 @@ export function StorefrontClient({
                 </span>
               ) : (
                 <span className="text-[#2D2226]/80">
-                  Te faltan{" "}
+                  Te faltan solo{" "}
                   <strong className="text-[#D85C8A]">
                     {formatCOP(
                       Math.max(0, wholesaleThreshold - wholesaleSubtotal)
                     )}
                   </strong>{" "}
-                  en precio mayorista para activar tarifa al por mayor.
+                  para disfrutar de nuestros precios al por mayor
                 </span>
               )}
             </div>
@@ -812,7 +874,7 @@ export function StorefrontClient({
         ) : (
           <div className="mt-12 rounded-3xl border border-dashed border-[#FAD4E4] bg-[#FFF1F5]/40 px-6 py-16 text-center">
             <Sparkles className="mx-auto h-8 w-8 text-[#D85C8A]/70" />
-            <h3 className="mt-3 font-[family-name:var(--font-playfair)] text-xl font-semibold text-[#2D2226]">
+            <h3 className="mt-3 text-xl font-extrabold tracking-tight text-[#2D2226]">
               No encontramos productos
             </h3>
             <p className="mt-1 text-sm text-[#2D2226]/65">

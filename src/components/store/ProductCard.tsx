@@ -237,7 +237,7 @@ export const ProductCard = memo(function ProductCard({
             {brandName}
           </span>
         )}
-        <h3 className="line-clamp-2 font-[family-name:var(--font-playfair)] text-sm font-semibold leading-snug text-[#2D2226] sm:text-lg">
+        <h3 className="line-clamp-2 text-sm font-bold leading-snug tracking-tight text-[#2D2226] sm:text-lg">
           {product.name}
         </h3>
 
@@ -334,21 +334,13 @@ export const ProductCard = memo(function ProductCard({
                     aria-label={`Tono ${variant.shade_name}${
                       depleted ? " agotado" : ""
                     }`}
-                    className={`relative h-6 w-6 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D85C8A] focus-visible:ring-offset-1 sm:h-8 sm:w-8 sm:focus-visible:ring-offset-2 ${
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D85C8A] focus-visible:ring-offset-1 sm:px-3 sm:py-1.5 sm:text-xs ${
                       selected
-                        ? "scale-110 ring-2 ring-[#D85C8A] ring-offset-1 sm:ring-offset-2"
-                        : "ring-1 ring-[#2D2226]/15 hover:scale-105"
-                    } ${depleted ? "cursor-not-allowed opacity-45" : "cursor-pointer"}`}
-                    style={{ backgroundColor: variant.shade_hex || "#F48FB1" }}
+                        ? "border-[#D85C8A] bg-[#D85C8A] text-white shadow-xs"
+                        : "border-[#FAD4E4] bg-white text-[#2D2226] hover:border-[#D85C8A]/60 hover:bg-[#FFF1F5]"
+                    } ${depleted ? "cursor-not-allowed line-through opacity-45" : "cursor-pointer"}`}
                   >
-                    {depleted && (
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 flex items-center justify-center"
-                      >
-                        <span className="h-[2px] w-5 rotate-45 rounded-full bg-[#2D2226]/80 sm:w-7" />
-                      </span>
-                    )}
+                    {variant.shade_name}
                   </button>
                 );
               })}

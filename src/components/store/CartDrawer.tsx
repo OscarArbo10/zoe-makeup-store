@@ -193,7 +193,7 @@ export function CartDrawer({
               <ShoppingBag className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold text-[#2D2226]">
+              <h2 className="text-lg font-extrabold tracking-tight text-[#2D2226]">
                 Tu Carrito
               </h2>
               <p className="text-xs text-[#2D2226]/60">
@@ -218,7 +218,7 @@ export function CartDrawer({
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF1F5] text-[#D85C8A] ring-8 ring-[#FFF1F5]/70">
               <CheckCircle2 className="h-9 w-9" />
             </div>
-            <h3 className="mt-5 font-[family-name:var(--font-playfair)] text-2xl font-semibold text-[#2D2226]">
+            <h3 className="mt-5 text-2xl font-extrabold tracking-tight text-[#2D2226]">
               ¡Pedido #{completedOrder.orderNumber} creado!
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-[#2D2226]/70">
@@ -279,7 +279,7 @@ export function CartDrawer({
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF1F5] text-[#D85C8A]">
               <ShoppingBag className="h-7 w-7" />
             </div>
-            <h3 className="mt-4 font-[family-name:var(--font-playfair)] text-xl font-semibold text-[#2D2226]">
+            <h3 className="mt-4 text-xl font-extrabold tracking-tight text-[#2D2226]">
               Tu carrito está vacío
             </h3>
             <p className="mt-1.5 max-w-xs text-sm text-[#2D2226]/65">
@@ -317,11 +317,11 @@ export function CartDrawer({
                 <div>
                   <div className="flex items-center justify-between text-xs font-medium text-[#2D2226]">
                     <span>
-                      Te faltan{" "}
+                      Te faltan solo{" "}
                       <strong className="font-bold text-[#D85C8A]">
                         {formatCOP(remaining)}
                       </strong>{" "}
-                      en precio mayorista para desbloquear tarifa al por mayor
+                      para disfrutar de nuestros precios al por mayor
                     </span>
                     <span className="font-semibold text-[#B94470]">
                       {progressPercent}%

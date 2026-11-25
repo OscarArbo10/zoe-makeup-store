@@ -216,7 +216,7 @@ export function AdminDashboard({
               />
             </div>
             <div>
-              <h1 className="font-[family-name:var(--font-playfair)] text-xl font-bold leading-none text-[#2D2226]">
+              <h1 className="text-xl font-extrabold leading-none tracking-tight text-[#2D2226]">
                 {settings.store_name || "ZOÉ COSMETICS"} Admin
               </h1>
               <p className="mt-0.5 text-[11px] text-[#2D2226]/60">{userEmail}</p>
