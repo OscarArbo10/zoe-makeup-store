@@ -348,16 +348,14 @@ export function StorefrontClient({
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-expanded={menuOpen}
-              aria-label="Abrir menú de tienda"
-              className="relative flex cursor-pointer items-center gap-2 rounded-2xl bg-[#FFF1F5] px-3.5 py-2 text-sm font-semibold text-[#2D2226] ring-1 ring-[#FAD4E4] transition-all hover:-translate-y-0.5 hover:bg-[#FAD4E4]/50 hover:shadow-sm sm:gap-2.5 sm:px-4 sm:py-2.5"
+              aria-label="Abrir menú"
+              className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-2xl bg-[#FFF1F5] text-[#2D2226] ring-1 ring-[#FAD4E4] transition-all hover:-translate-y-0.5 hover:bg-[#FAD4E4]/50 hover:shadow-sm"
             >
-              <Menu className="h-4 w-4 text-[#D85C8A]" />
-              <span className="text-xs sm:text-sm">Tienda</span>
-              <ChevronDown className="hidden h-3.5 w-3.5 text-[#B94470] sm:inline" />
+              <Menu className="h-5 w-5 text-[#D85C8A]" />
               {activeFilterLabel && (
                 <span
                   aria-hidden="true"
-                  className="h-2 w-2 rounded-full bg-[#D85C8A]"
+                  className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#D85C8A] ring-2 ring-white"
                 />
               )}
             </button>
