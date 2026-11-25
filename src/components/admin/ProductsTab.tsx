@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import type {
+  Brand,
   Category,
   ProductVariant,
   ProductWithVariants,
@@ -30,6 +31,7 @@ import { revalidateCatalog } from "@/app/admin/actions";
 interface ProductsTabProps {
   products: ProductWithVariants[];
   categories: Category[];
+  brands: Brand[];
   onRefresh: () => Promise<void>;
 }
 
@@ -38,6 +40,7 @@ interface ProductFormState {
   name: string;
   slug: string;
   category_id: string;
+  brand_id: string;
   description: string;
   retail_price: string;
   wholesale_price: string;
@@ -60,6 +63,7 @@ const EMPTY_PRODUCT_FORM: ProductFormState = {
   name: "",
   slug: "",
   category_id: "",
+  brand_id: "",
   description: "",
   retail_price: "",
   wholesale_price: "",
@@ -70,6 +74,7 @@ const EMPTY_PRODUCT_FORM: ProductFormState = {
 export function ProductsTab({
   products,
   categories,
+  brands,
   onRefresh,
 }: ProductsTabProps) {
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -101,6 +106,7 @@ export function ProductsTab({
     setProductForm({
       ...EMPTY_PRODUCT_FORM,
       category_id: categories[0]?.id ?? "",
+      brand_id: brands[0]?.id ?? "",
     });
     setProductModalOpen(true);
   };
@@ -111,6 +117,7 @@ export function ProductsTab({
       name: product.name,
       slug: product.slug,
       category_id: product.category_id ?? "",
+      brand_id: product.brand_id ?? "",
       description: product.description ?? "",
       retail_price: String(product.retail_price),
       wholesale_price: String(product.wholesale_price),
@@ -158,6 +165,7 @@ export function ProductsTab({
         name: productForm.name.trim(),
         slug: finalSlug,
         category_id: productForm.category_id || null,
+        brand_id: productForm.brand_id || null,
         description: productForm.description.trim() || null,
         retail_price: retailPrice,
         wholesale_price: wholesalePrice,
@@ -369,8 +377,19 @@ export function ProductsTab({
     return map;
   }, [categories]);
 
+  const brandNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of brands) {
+      map.set(b.id, b.name);
+    }
+    return map;
+  }, [brands]);
+
   const categoryNameById = (id: string | null) =>
     (id ? categoryNameMap.get(id) : undefined) ?? "Sin categoría";
+
+  const brandNameById = (id: string | null) =>
+    id ? brandNameMap.get(id) ?? null : null;
 
   return (
     <div className="space-y-6">
@@ -458,6 +477,11 @@ export function ProductsTab({
                         <span className="rounded-full bg-[#FFF1F5] px-2.5 py-0.5 text-[11px] font-medium text-[#B94470]">
                           {categoryNameById(product.category_id)}
                         </span>
+                        {brandNameById(product.brand_id) && (
+                          <span className="rounded-full border border-[#FAD4E4] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[#2D2226]/75">
+                            {brandNameById(product.brand_id)}
+                          </span>
+                        )}
                       </div>
 
                       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#2D2226]/70">
@@ -697,22 +721,45 @@ export function ProductsTab({
 
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-[#2D2226]/80">
-                    Slug (URL) *
+                    Marca
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={productForm.slug}
+                  <select
+                    value={productForm.brand_id}
                     onChange={(e) =>
                       setProductForm((prev) => ({
                         ...prev,
-                        slug: slugify(e.target.value),
+                        brand_id: e.target.value,
                       }))
                     }
-                    placeholder="gloss-hidratante-zoe"
-                    className="w-full rounded-xl border border-[#FAD4E4] px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
-                  />
+                    className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
+                  >
+                    <option value="">Sin marca</option>
+                    {brands.map((brand) => (
+                      <option key={brand.id} value={brand.id}>
+                        {brand.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-[#2D2226]/80">
+                  Slug (URL) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={productForm.slug}
+                  onChange={(e) =>
+                    setProductForm((prev) => ({
+                      ...prev,
+                      slug: slugify(e.target.value),
+                    }))
+                  }
+                  placeholder="gloss-hidratante-zoe"
+                  className="w-full rounded-xl border border-[#FAD4E4] px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

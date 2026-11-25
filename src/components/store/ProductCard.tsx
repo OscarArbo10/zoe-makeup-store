@@ -9,6 +9,7 @@ import { formatCOP } from "@/lib/format";
 interface ProductCardProps {
   product: ProductWithVariants;
   categoryName?: string;
+  brandName?: string;
   wholesaleActive: boolean;
   index: number;
   onAddToCart: (product: ProductWithVariants, variant: ProductVariant) => void;
@@ -17,6 +18,7 @@ interface ProductCardProps {
 export const ProductCard = memo(function ProductCard({
   product,
   categoryName,
+  brandName,
   wholesaleActive,
   index,
   onAddToCart,
@@ -127,6 +129,11 @@ export const ProductCard = memo(function ProductCard({
 
       {/* Contenido */}
       <div className="flex flex-1 flex-col p-3 sm:p-5">
+        {brandName && (
+          <span className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#B94470] sm:text-[11px]">
+            {brandName}
+          </span>
+        )}
         <h3 className="line-clamp-2 font-[family-name:var(--font-playfair)] text-sm font-semibold leading-snug text-[#2D2226] sm:text-lg">
           {product.name}
         </h3>

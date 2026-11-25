@@ -59,6 +59,14 @@ export interface Category {
   created_at: string;
 }
 
+export interface Brand {
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface ProductVariant {
   id: string;
   product_id: string;
@@ -73,6 +81,7 @@ export interface ProductVariant {
 export interface Product {
   id: string;
   category_id: string | null;
+  brand_id: string | null;
   name: string;
   slug: string;
   description: string | null;
@@ -86,6 +95,7 @@ export interface Product {
 
 export interface ProductWithVariants extends Product {
   category?: Category | null;
+  brand?: Brand | null;
   product_variants: ProductVariant[];
 }
 

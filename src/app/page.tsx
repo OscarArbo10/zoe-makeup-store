@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import type {
+  Brand,
   Category,
   ProductWithVariants,
   StoreSettings,
@@ -18,6 +19,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
 async function getCatalogData(): Promise<{
   settings: StoreSettings;
   categories: Category[];
+  brands: Brand[];
   products: ProductWithVariants[];
 }> {
   "use cache";
@@ -26,52 +28,62 @@ async function getCatalogData(): Promise<{
 
   const supabase = createPublicClient();
 
-  const [settingsRes, categoriesRes, productsRes] = await Promise.all([
-    supabase
-      .from("store_settings")
-      .select("id, store_name, wholesale_threshold, whatsapp_number, updated_at")
-      .eq("id", 1)
-      .maybeSingle(),
-    supabase
-      .from("categories")
-      .select("id, name, slug, sort_order, created_at")
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true }),
-    supabase
-      .from("products")
-      .select(
-        `
-        id,
-        category_id,
-        name,
-        slug,
-        description,
-        retail_price,
-        wholesale_price,
-        image_url,
-        is_active,
-        created_at,
-        updated_at,
-        product_variants (
+  const [settingsRes, categoriesRes, brandsRes, productsRes] =
+    await Promise.all([
+      supabase
+        .from("store_settings")
+        .select(
+          "id, store_name, wholesale_threshold, whatsapp_number, updated_at"
+        )
+        .eq("id", 1)
+        .maybeSingle(),
+      supabase
+        .from("categories")
+        .select("id, name, slug, sort_order, created_at")
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      supabase
+        .from("brands")
+        .select("id, name, slug, sort_order, created_at")
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      supabase
+        .from("products")
+        .select(
+          `
           id,
-          product_id,
-          shade_name,
-          shade_hex,
-          stock,
+          category_id,
+          brand_id,
+          name,
+          slug,
+          description,
+          retail_price,
+          wholesale_price,
           image_url,
           is_active,
-          created_at
+          created_at,
+          updated_at,
+          product_variants (
+            id,
+            product_id,
+            shade_name,
+            shade_hex,
+            stock,
+            image_url,
+            is_active,
+            created_at
+          )
+        `
         )
-      `
-      )
-      .eq("is_active", true)
-      .eq("product_variants.is_active", true)
-      .order("created_at", { ascending: false }),
-  ]);
+        .eq("is_active", true)
+        .eq("product_variants.is_active", true)
+        .order("created_at", { ascending: false }),
+    ]);
 
   const settings: StoreSettings =
     (settingsRes.data as StoreSettings | null) ?? DEFAULT_SETTINGS;
   const categories: Category[] = (categoriesRes.data as Category[] | null) ?? [];
+  const brands: Brand[] = (brandsRes.data as Brand[] | null) ?? [];
   const products: ProductWithVariants[] = (
     (productsRes.data as ProductWithVariants[] | null) ?? []
   ).map((p) => ({
@@ -81,16 +93,17 @@ async function getCatalogData(): Promise<{
     ),
   }));
 
-  return { settings, categories, products };
+  return { settings, categories, brands, products };
 }
 
 export default async function HomePage() {
-  const { settings, categories, products } = await getCatalogData();
+  const { settings, categories, brands, products } = await getCatalogData();
 
   return (
     <StorefrontClient
       settings={settings}
       categories={categories}
+      brands={brands}
       products={products}
     />
   );

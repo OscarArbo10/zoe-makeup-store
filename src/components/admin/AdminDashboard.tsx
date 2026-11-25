@@ -13,8 +13,10 @@ import {
   RefreshCw,
   Settings,
   ShoppingBag,
+  Tag,
 } from "lucide-react";
 import type {
+  Brand,
   Category,
   OrderWithItems,
   ProductWithVariants,
@@ -28,6 +30,11 @@ const CategoriesTab = dynamic(
   { ssr: false }
 );
 
+const BrandsTab = dynamic(
+  () => import("./BrandsTab").then((mod) => mod.BrandsTab),
+  { ssr: false }
+);
+
 const OrdersTab = dynamic(
   () => import("./OrdersTab").then((mod) => mod.OrdersTab),
   { ssr: false }
@@ -38,12 +45,13 @@ const SettingsTab = dynamic(
   { ssr: false }
 );
 
-type AdminTab = "products" | "categories" | "orders" | "settings";
+type AdminTab = "products" | "categories" | "brands" | "orders" | "settings";
 
 interface AdminDashboardProps {
   userEmail: string;
   initialSettings: StoreSettings;
   initialCategories: Category[];
+  initialBrands: Brand[];
   initialProducts: ProductWithVariants[];
   initialOrders: OrderWithItems[];
 }
@@ -52,6 +60,7 @@ export function AdminDashboard({
   userEmail,
   initialSettings,
   initialCategories,
+  initialBrands,
   initialProducts,
   initialOrders,
 }: AdminDashboardProps) {
@@ -59,6 +68,7 @@ export function AdminDashboard({
   const [activeTab, setActiveTab] = useState<AdminTab>("products");
   const [settings, setSettings] = useState<StoreSettings>(initialSettings);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [brands, setBrands] = useState<Brand[]>(initialBrands);
   const [products, setProducts] =
     useState<ProductWithVariants[]>(initialProducts);
   const [orders, setOrders] = useState<OrderWithItems[]>(initialOrders);
@@ -82,6 +92,16 @@ export function AdminDashboard({
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
     if (data) setCategories(data as Category[]);
+  }, []);
+
+  const refreshBrands = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("brands")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
+    if (data) setBrands(data as Brand[]);
   }, []);
 
   const refreshProducts = useCallback(async () => {
@@ -117,13 +137,20 @@ export function AdminDashboard({
       await Promise.all([
         refreshSettings(),
         refreshCategories(),
+        refreshBrands(),
         refreshProducts(),
         refreshOrders(),
       ]);
     } finally {
       setRefreshing(false);
     }
-  }, [refreshSettings, refreshCategories, refreshProducts, refreshOrders]);
+  }, [
+    refreshSettings,
+    refreshCategories,
+    refreshBrands,
+    refreshProducts,
+    refreshOrders,
+  ]);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -153,6 +180,12 @@ export function AdminDashboard({
       label: "Categorías",
       icon: FolderTree,
       badge: categories.length,
+    },
+    {
+      id: "brands",
+      label: "Marcas",
+      icon: Tag,
+      badge: brands.length,
     },
     {
       id: "orders",
@@ -272,6 +305,7 @@ export function AdminDashboard({
           <ProductsTab
             products={products}
             categories={categories}
+            brands={brands}
             onRefresh={refreshProducts}
           />
         )}
@@ -280,6 +314,9 @@ export function AdminDashboard({
             categories={categories}
             onRefresh={refreshCategories}
           />
+        )}
+        {activeTab === "brands" && (
+          <BrandsTab brands={brands} onRefresh={refreshBrands} />
         )}
         {activeTab === "orders" && (
           <OrdersTab

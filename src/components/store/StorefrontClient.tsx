@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import type {
+  Brand,
   CartItem,
   Category,
   ProductVariant,
@@ -88,15 +89,21 @@ function writeCartStorage(nextItems: CartItem[]) {
 interface StorefrontClientProps {
   settings: StoreSettings;
   categories: Category[];
+  brands: Brand[];
   products: ProductWithVariants[];
 }
 
 export function StorefrontClient({
   settings,
   categories,
+  brands,
   products,
 }: StorefrontClientProps) {
+  const [filterMode, setFilterMode] = useState<"categories" | "brands">(
+    "categories"
+  );
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [selectedBrandId, setSelectedBrandId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [toast, setToast] = useState<{
@@ -135,22 +142,50 @@ export function StorefrontClient({
     return map;
   }, [categories]);
 
+  const brandMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of brands) {
+      map.set(b.id, b.name);
+    }
+    return map;
+  }, [brands]);
+
   const filteredProducts = useMemo(() => {
     const q = deferredSearchQuery.trim().toLowerCase();
     return products.filter((product) => {
-      const matchesCategory =
-        selectedCategoryId === "all" ||
-        product.category_id === selectedCategoryId;
+      const matchesFilter =
+        filterMode === "categories"
+          ? selectedCategoryId === "all" ||
+            product.category_id === selectedCategoryId
+          : selectedBrandId === "all" || product.brand_id === selectedBrandId;
+
+      const brandName = product.brand_id
+        ? brandMap.get(product.brand_id)?.toLowerCase() ?? ""
+        : "";
+      const categoryName = product.category_id
+        ? categoryMap.get(product.category_id)?.toLowerCase() ?? ""
+        : "";
+
       const matchesSearch =
         !q ||
         product.name.toLowerCase().includes(q) ||
+        brandName.includes(q) ||
+        categoryName.includes(q) ||
         (product.description?.toLowerCase().includes(q) ?? false) ||
         product.product_variants.some((v) =>
           v.shade_name.toLowerCase().includes(q)
         );
-      return matchesCategory && matchesSearch;
+      return matchesFilter && matchesSearch;
     });
-  }, [products, selectedCategoryId, deferredSearchQuery]);
+  }, [
+    products,
+    filterMode,
+    selectedCategoryId,
+    selectedBrandId,
+    deferredSearchQuery,
+    brandMap,
+    categoryMap,
+  ]);
 
   const retailSubtotal = useMemo(
     () =>
@@ -243,9 +278,8 @@ export function StorefrontClient({
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-2">
           <Sparkles className="h-3.5 w-3.5 shrink-0 animate-pulse" />
           <span>
-            Activa <strong>precios al por mayor</strong> automáticamente al
-            alcanzar <strong>{formatCOP(wholesaleThreshold)}</strong> en precio
-            al por mayor
+            Accede a los <strong>precios al por mayor</strong> a partir de{" "}
+            <strong>{formatCOP(wholesaleThreshold)} pesos</strong>
           </span>
         </div>
       </div>
@@ -344,58 +378,130 @@ export function StorefrontClient({
 
       {/* Catálogo: buscador + filtros de categorías + grilla */}
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-        {/* Controles de búsqueda y categorías */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          {/* Categorías */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedCategoryId("all")}
-              className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
-                selectedCategoryId === "all"
-                  ? "bg-[#D85C8A] text-white shadow-sm"
-                  : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
-              }`}
+        {/* Controles de búsqueda y selector Categorías / Marcas */}
+        <div className="space-y-3.5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Selector de modo: Categorías vs Marcas */}
+            <div
+              className="inline-flex w-full rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/75 p-1 sm:w-auto"
+              role="tablist"
+              aria-label="Modo de exploración"
             >
-              Todos
-            </button>
-            {categories.map((category) => (
               <button
-                key={category.id}
                 type="button"
-                onClick={() => setSelectedCategoryId(category.id)}
+                role="tab"
+                aria-selected={filterMode === "categories"}
+                onClick={() => {
+                  setFilterMode("categories");
+                  setSelectedBrandId("all");
+                }}
+                className={`flex-1 cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-initial sm:text-sm ${
+                  filterMode === "categories"
+                    ? "bg-[#D85C8A] text-white shadow-xs"
+                    : "text-[#2D2226]/75 hover:text-[#2D2226]"
+                }`}
+              >
+                Por categorías
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={filterMode === "brands"}
+                onClick={() => {
+                  setFilterMode("brands");
+                  setSelectedCategoryId("all");
+                }}
+                className={`flex-1 cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-initial sm:text-sm ${
+                  filterMode === "brands"
+                    ? "bg-[#D85C8A] text-white shadow-xs"
+                    : "text-[#2D2226]/75 hover:text-[#2D2226]"
+                }`}
+              >
+                Por marcas
+              </button>
+            </div>
+
+            {/* Buscador */}
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#D85C8A]" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar producto, marca o tono..."
+                className="w-full rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/40 py-2.5 pl-10 pr-9 text-sm text-[#2D2226] placeholder:text-[#2D2226]/45 focus:border-[#D85C8A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Limpiar búsqueda"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-[#2D2226]/45 hover:text-[#2D2226]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Chips de Categorías o Marcas según la elección */}
+          {filterMode === "categories" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryId("all")}
                 className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
-                  selectedCategoryId === category.id
+                  selectedCategoryId === "all"
                     ? "bg-[#D85C8A] text-white shadow-sm"
                     : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
                 }`}
               >
-                {category.name}
+                Todas las categorías
               </button>
-            ))}
-          </div>
-
-          {/* Buscador */}
-          <div className="relative w-full md:w-72">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#D85C8A]" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar producto o tono..."
-              className="w-full rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/40 py-2.5 pl-10 pr-9 text-sm text-[#2D2226] placeholder:text-[#2D2226]/45 focus:border-[#D85C8A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
-            />
-            {searchQuery && (
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => setSelectedCategoryId(category.id)}
+                  className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
+                    selectedCategoryId === category.id
+                      ? "bg-[#D85C8A] text-white shadow-sm"
+                      : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
+                  }`}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
-                aria-label="Limpiar búsqueda"
-                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-[#2D2226]/45 hover:text-[#2D2226]"
+                onClick={() => setSelectedBrandId("all")}
+                className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
+                  selectedBrandId === "all"
+                    ? "bg-[#D85C8A] text-white shadow-sm"
+                    : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
+                }`}
               >
-                <X className="h-4 w-4" />
+                Todas las marcas
               </button>
-            )}
-          </div>
+              {brands.map((brand) => (
+                <button
+                  key={brand.id}
+                  type="button"
+                  onClick={() => setSelectedBrandId(brand.id)}
+                  className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
+                    selectedBrandId === brand.id
+                      ? "bg-[#D85C8A] text-white shadow-sm"
+                      : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
+                  }`}
+                >
+                  {brand.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Estado del carrito en móvil si tiene ítems */}
@@ -440,6 +546,9 @@ export function StorefrontClient({
                     ? categoryMap.get(product.category_id)
                     : undefined
                 }
+                brandName={
+                  product.brand_id ? brandMap.get(product.brand_id) : undefined
+                }
                 wholesaleActive={wholesaleActive}
                 index={index}
                 onAddToCart={handleAddToCart}
@@ -453,14 +562,17 @@ export function StorefrontClient({
               No encontramos productos
             </h3>
             <p className="mt-1 text-sm text-[#2D2226]/65">
-              Prueba con otro nombre o selecciona otra categoría.
+              Prueba con otro nombre o selecciona otra categoría o marca.
             </p>
-            {(searchQuery || selectedCategoryId !== "all") && (
+            {(searchQuery ||
+              selectedCategoryId !== "all" ||
+              selectedBrandId !== "all") && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery("");
                   setSelectedCategoryId("all");
+                  setSelectedBrandId("all");
                 }}
                 className="mt-4 cursor-pointer rounded-xl bg-[#D85C8A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#B94470]"
               >

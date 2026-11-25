@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/supabase/auth";
 import type {
+  Brand,
   Category,
   OrderWithItems,
   ProductWithVariants,
@@ -32,11 +33,16 @@ async function AdminContent() {
     redirect("/admin/login?error=unauthorized");
   }
 
-  const [settingsRes, categoriesRes, productsRes, ordersRes] =
+  const [settingsRes, categoriesRes, brandsRes, productsRes, ordersRes] =
     await Promise.all([
       supabase.from("store_settings").select("*").eq("id", 1).maybeSingle(),
       supabase
         .from("categories")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      supabase
+        .from("brands")
         .select("*")
         .order("sort_order", { ascending: true })
         .order("name", { ascending: true }),
@@ -53,6 +59,7 @@ async function AdminContent() {
   const settings =
     (settingsRes.data as StoreSettings | null) ?? DEFAULT_SETTINGS;
   const categories = (categoriesRes.data as Category[] | null) ?? [];
+  const brands = (brandsRes.data as Brand[] | null) ?? [];
   const products = (
     (productsRes.data as ProductWithVariants[] | null) ?? []
   ).map((p) => ({
@@ -68,6 +75,7 @@ async function AdminContent() {
       userEmail={user.email ?? "admin"}
       initialSettings={settings}
       initialCategories={categories}
+      initialBrands={brands}
       initialProducts={products}
       initialOrders={orders}
     />
