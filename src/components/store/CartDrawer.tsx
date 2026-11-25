@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   CheckCircle2,
   ExternalLink,
@@ -14,12 +15,8 @@ import {
   X,
 } from "lucide-react";
 import type { CartItem, StoreSettings } from "@/types/database";
-import {
-  buildWhatsAppOrderUrl,
-  formatCOP,
-  generateOrderNumber,
-} from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { formatCOP } from "@/lib/format";
+import { submitOrder } from "@/app/actions/checkout";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -101,96 +98,32 @@ export function CartDrawer({
     setSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const orderId = crypto.randomUUID();
-      let orderNumber = generateOrderNumber();
-
-      // Insertamos sin .select() para cumplir con RLS (anon tiene INSERT, no SELECT en orders)
-      let insertError = (
-        await supabase.from("orders").insert({
-          id: orderId,
-          order_number: orderNumber,
-          customer_name: trimmedName,
-          customer_phone: trimmedPhone,
-          customer_city: customerCity.trim() || null,
-          notes: notes.trim() || null,
-          applied_wholesale: appliedWholesale,
-          retail_subtotal: retailSubtotal,
-          total_amount: totalAmount,
-          status: "pendiente",
-        })
-      ).error;
-
-      // Reintento único si existiera colisión de número de pedido (23505)
-      if (insertError?.code === "23505") {
-        orderNumber = generateOrderNumber();
-        insertError = (
-          await supabase.from("orders").insert({
-            id: orderId,
-            order_number: orderNumber,
-            customer_name: trimmedName,
-            customer_phone: trimmedPhone,
-            customer_city: customerCity.trim() || null,
-            notes: notes.trim() || null,
-            applied_wholesale: appliedWholesale,
-            retail_subtotal: retailSubtotal,
-            total_amount: totalAmount,
-            status: "pendiente",
-          })
-        ).error;
-      }
-
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
-
-      const orderItemsPayload = items.map((item) => {
-        const unitPrice = appliedWholesale
-          ? item.wholesalePrice
-          : item.retailPrice;
-        return {
-          order_id: orderId,
-          product_id: item.productId,
-          variant_id: item.variantId,
-          product_name: item.productName,
-          shade_name: item.shadeName,
-          quantity: item.quantity,
-          unit_price_applied: unitPrice,
-          line_total: unitPrice * item.quantity,
-        };
-      });
-
-      const { error: itemsError } = await supabase
-        .from("order_items")
-        .insert(orderItemsPayload);
-
-      if (itemsError) {
-        throw new Error(itemsError.message);
-      }
-
-      const whatsappUrl = buildWhatsAppOrderUrl(settings.whatsapp_number, {
-        storeName: settings.store_name || "ZOÉ COSMETICS",
-        orderNumber,
+      const result = await submitOrder({
         customerName: trimmedName,
         customerPhone: trimmedPhone,
         customerCity: customerCity.trim(),
         notes: notes.trim(),
-        appliedWholesale,
-        retailSubtotal,
-        totalAmount,
-        savings,
-        items,
+        items: items.map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+        })),
       });
 
+      if (!result.ok) {
+        setErrorMsg(result.error);
+        return;
+      }
+
       // Abrir WhatsApp en una nueva pestaña
-      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      window.open(result.whatsappUrl, "_blank", "noopener,noreferrer");
 
       setCompletedOrder({
-        orderNumber,
-        whatsappUrl,
-        totalAmount,
-        appliedWholesale,
-        savings,
+        orderNumber: result.orderNumber,
+        whatsappUrl: result.whatsappUrl,
+        totalAmount: result.totalAmount,
+        appliedWholesale: result.appliedWholesale,
+        savings: result.savings,
       });
 
       onClearCart();
@@ -399,10 +332,11 @@ export function CartDrawer({
                     {/* Miniatura */}
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-[#FAD4E4]/70 bg-[#FFF1F5]">
                       {item.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={item.imageUrl}
                           alt={`${item.productName} - ${item.shadeName}`}
+                          width={64}
+                          height={64}
                           className="h-full w-full object-cover"
                         />
                       ) : (

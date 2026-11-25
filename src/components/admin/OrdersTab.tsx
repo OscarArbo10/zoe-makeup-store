@@ -28,6 +28,14 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const order of orders) {
+      counts[order.status] = (counts[order.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [orders]);
+
   const filteredOrders = useMemo(() => {
     if (statusFilter === "all") return orders;
     return orders.filter((o) => o.status === statusFilter);
@@ -101,7 +109,7 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
           Todos ({orders.length})
         </button>
         {ORDER_STATUSES.map((st) => {
-          const count = orders.filter((o) => o.status === st.value).length;
+          const count = statusCounts[st.value] ?? 0;
           return (
             <button
               key={st.value}

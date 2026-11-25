@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/supabase/auth";
@@ -9,17 +10,15 @@ import type {
 } from "@/types/database";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
-export const dynamic = "force-dynamic";
-
 const DEFAULT_SETTINGS: StoreSettings = {
   id: 1,
-  store_name: "Zoe",
+  store_name: "ZOÉ COSMETICS",
   wholesale_threshold: 100000,
-  whatsapp_number: "573000000000",
-  updated_at: new Date().toISOString(),
+  whatsapp_number: "573007117844",
+  updated_at: "2026-01-01T00:00:00.000Z",
 };
 
-export default async function AdminPage() {
+async function AdminContent() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -72,5 +71,19 @@ export default async function AdminPage() {
       initialProducts={products}
       initialOrders={orders}
     />
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#FFF1F5]/35 text-sm text-[#B94470]">
+          Cargando panel de administración...
+        </div>
+      }
+    >
+      <AdminContent />
+    </Suspense>
   );
 }

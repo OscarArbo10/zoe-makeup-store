@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, Lock } from "lucide-react";
@@ -69,10 +70,11 @@ export function AdminLoginForm() {
         <div className="rounded-3xl border border-[#FAD4E4] bg-white p-7 shadow-[0_14px_40px_rgb(216,92,138,0.10)] sm:p-8">
           <div className="flex flex-col items-center text-center">
             <div className="h-20 w-20 overflow-hidden rounded-3xl border-2 border-[#FAD4E4] bg-[#FFA6DA] shadow-md shadow-[#D85C8A]/15">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/zoe-logo.jpg"
-                alt="Logo Zoe"
+                alt="Logo ZOÉ COSMETICS"
+                width={80}
+                height={80}
                 className="h-full w-full object-cover"
               />
             </div>

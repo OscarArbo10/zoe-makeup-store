@@ -4,9 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/supabase/auth";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminLoginPage() {
+async function AdminLoginGate() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,9 +14,13 @@ export default async function AdminLoginPage() {
     redirect("/admin");
   }
 
+  return <AdminLoginForm />;
+}
+
+export default function AdminLoginPage() {
   return (
     <Suspense fallback={null}>
-      <AdminLoginForm />
+      <AdminLoginGate />
     </Suspense>
   );
 }

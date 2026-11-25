@@ -5,6 +5,7 @@ import { Loader2, Save } from "lucide-react";
 import type { StoreSettings } from "@/types/database";
 import { formatCOP, sanitizePhoneForWhatsApp } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
+import { revalidateCatalog } from "@/app/admin/actions";
 
 interface SettingsTabProps {
   settings: StoreSettings;
@@ -61,7 +62,7 @@ export function SettingsTab({ settings, onRefresh }: SettingsTabProps) {
         type: "success",
         text: "Configuración guardada y aplicada en la tienda.",
       });
-      await onRefresh();
+      await Promise.all([onRefresh(), revalidateCatalog()]);
     } catch (err) {
       setFeedback({
         type: "error",

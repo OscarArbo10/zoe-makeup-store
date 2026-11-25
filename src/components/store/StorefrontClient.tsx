@@ -1,6 +1,16 @@
 "use client";
 
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -19,8 +29,12 @@ import type {
 } from "@/types/database";
 import { formatCOP } from "@/lib/format";
 import { ProductCard } from "./ProductCard";
-import { CartDrawer } from "./CartDrawer";
 import { DynamicHeroDecor } from "./DynamicHeroDecor";
+
+const CartDrawer = dynamic(
+  () => import("./CartDrawer").then((mod) => mod.CartDrawer),
+  { ssr: false }
+);
 
 const CART_STORAGE_KEY = "zoe_makeup_cart_v1";
 const CART_CHANGE_EVENT = "zoe-cart-change";
@@ -92,16 +106,26 @@ export function StorefrontClient({
   } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
   const cartItems = useSyncExternalStore(
     subscribeToCart,
     getCartSnapshot,
     getServerCartSnapshot
   );
 
-  const updateCart = (updater: (prev: CartItem[]) => CartItem[]) => {
+  const updateCart = useCallback((updater: (prev: CartItem[]) => CartItem[]) => {
     const next = updater(getCartSnapshot());
     writeCartStorage(next);
-  };
+  }, []);
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -112,7 +136,7 @@ export function StorefrontClient({
   }, [categories]);
 
   const filteredProducts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = deferredSearchQuery.trim().toLowerCase();
     return products.filter((product) => {
       const matchesCategory =
         selectedCategoryId === "all" ||
@@ -126,7 +150,7 @@ export function StorefrontClient({
         );
       return matchesCategory && matchesSearch;
     });
-  }, [products, selectedCategoryId, searchQuery]);
+  }, [products, selectedCategoryId, deferredSearchQuery]);
 
   const retailSubtotal = useMemo(
     () =>
@@ -149,48 +173,48 @@ export function StorefrontClient({
   const totalItemsCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
   const activeTotal = wholesaleActive ? wholesaleSubtotal : retailSubtotal;
 
-  const handleAddToCart = (
-    product: ProductWithVariants,
-    variant: ProductVariant
-  ) => {
-    const key = `${product.id}:${variant.id}`;
-    updateCart((prev) => {
-      const existing = prev.find((item) => item.key === key);
-      if (existing) {
-        const nextQty = Math.min(variant.stock, existing.quantity + 1);
-        return prev.map((item) =>
-          item.key === key
-            ? { ...item, quantity: nextQty, maxStock: variant.stock }
-            : item
-        );
-      }
+  const handleAddToCart = useCallback(
+    (product: ProductWithVariants, variant: ProductVariant) => {
+      const key = `${product.id}:${variant.id}`;
+      updateCart((prev) => {
+        const existing = prev.find((item) => item.key === key);
+        if (existing) {
+          const nextQty = Math.min(variant.stock, existing.quantity + 1);
+          return prev.map((item) =>
+            item.key === key
+              ? { ...item, quantity: nextQty, maxStock: variant.stock }
+              : item
+          );
+        }
 
-      return [
-        ...prev,
-        {
-          key,
-          productId: product.id,
-          variantId: variant.id,
-          productName: product.name,
-          shadeName: variant.shade_name,
-          shadeHex: variant.shade_hex || "#F48FB1",
-          imageUrl: variant.image_url || product.image_url,
-          retailPrice: product.retail_price,
-          wholesalePrice: product.wholesale_price,
-          maxStock: variant.stock,
-          quantity: 1,
-        },
-      ];
-    });
+        return [
+          ...prev,
+          {
+            key,
+            productId: product.id,
+            variantId: variant.id,
+            productName: product.name,
+            shadeName: variant.shade_name,
+            shadeHex: variant.shade_hex || "#F48FB1",
+            imageUrl: variant.image_url || product.image_url,
+            retailPrice: product.retail_price,
+            wholesalePrice: product.wholesale_price,
+            maxStock: variant.stock,
+            quantity: 1,
+          },
+        ];
+      });
 
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    setToast({
-      productName: product.name,
-      shadeName: variant.shade_name,
-      shadeHex: variant.shade_hex || "#F48FB1",
-    });
-    toastTimerRef.current = setTimeout(() => setToast(null), 2800);
-  };
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      setToast({
+        productName: product.name,
+        shadeName: variant.shade_name,
+        shadeHex: variant.shade_hex || "#F48FB1",
+      });
+      toastTimerRef.current = setTimeout(() => setToast(null), 2800);
+    },
+    [updateCart]
+  );
 
   const handleUpdateQuantity = (key: string, delta: number) => {
     updateCart((prev) =>
@@ -226,33 +250,34 @@ export function StorefrontClient({
         </div>
       </div>
 
-      {/* Header */}
+      {/* Header con logo centrado */}
       <header className="sticky top-0 z-40 border-b border-[#FAD4E4]/80 bg-white/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <Link href="/" className="group flex items-center gap-3">
-            <div className="relative h-11 w-11 overflow-hidden rounded-2xl border-2 border-[#FAD4E4] bg-[#FFA6DA] shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/zoe-logo.jpg"
-                alt={`Logo ${settings.store_name || "ZOÉ COSMETICS"}`}
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div>
-              <span className="block font-[family-name:var(--font-playfair)] text-xl font-bold leading-none tracking-tight text-[#2D2226] sm:text-2xl">
-                {settings.store_name || "ZOÉ COSMETICS"}
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#B94470]">
-                Maquillaje & Belleza
-              </span>
-            </div>
-          </Link>
+        <div className="mx-auto grid max-w-7xl grid-cols-3 items-center px-4 py-2.5 sm:px-6 lg:px-8">
+          <div aria-hidden="true" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex justify-center">
+            <Link
+              href="/"
+              aria-label={settings.store_name || "ZOÉ COSMETICS"}
+              className="group inline-flex items-center justify-center"
+            >
+              <div className="relative h-12 w-12 overflow-hidden rounded-2xl border-2 border-[#FAD4E4] bg-[#FFA6DA] shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-3 sm:h-13 sm:w-13">
+                <Image
+                  src="/zoe-logo.jpg"
+                  alt={`Logo ${settings.store_name || "ZOÉ COSMETICS"}`}
+                  width={52}
+                  height={52}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            </Link>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={() => setCartOpen(true)}
-              className="relative flex cursor-pointer items-center gap-2.5 rounded-2xl bg-[#FFF1F5] px-4 py-2.5 text-sm font-semibold text-[#2D2226] ring-1 ring-[#FAD4E4] transition-all hover:-translate-y-0.5 hover:bg-[#FAD4E4]/50 hover:shadow-sm"
+              className="relative flex cursor-pointer items-center gap-2 rounded-2xl bg-[#FFF1F5] px-3.5 py-2 text-sm font-semibold text-[#2D2226] ring-1 ring-[#FAD4E4] transition-all hover:-translate-y-0.5 hover:bg-[#FAD4E4]/50 hover:shadow-sm sm:gap-2.5 sm:px-4 sm:py-2.5"
             >
               <ShoppingBag className="h-4 w-4 text-[#D85C8A]" />
               <span className="hidden sm:inline">Carrito</span>
@@ -281,10 +306,12 @@ export function StorefrontClient({
             <div className="relative mx-auto mb-6 flex w-fit items-center justify-center">
               <div className="animate-zoe-orbit-pulse absolute -inset-3 rounded-[2.2rem] bg-gradient-to-tr from-[#FAD4E4] via-[#FFAED4]/50 to-[#FFF1F5] blur-xl" />
               <div className="animate-zoe-float relative h-28 w-28 overflow-hidden rounded-[2rem] border-4 border-white bg-[#FFA6DA] shadow-[0_16px_40px_rgba(216,92,138,0.25)] sm:h-32 sm:w-32">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src="/zoe-logo.jpg"
-                  alt={`Logo ${settings.store_name || "Zoe"}`}
+                  alt={`Logo ${settings.store_name || "ZOÉ COSMETICS"}`}
+                  width={128}
+                  height={128}
+                  preload
                   className="h-full w-full object-cover"
                 />
               </div>
@@ -403,8 +430,8 @@ export function StorefrontClient({
 
         {/* Grilla de productos */}
         {filteredProducts.length > 0 ? (
-          <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.map((product) => (
+          <div className="mt-7 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredProducts.map((product, index) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -414,6 +441,7 @@ export function StorefrontClient({
                     : undefined
                 }
                 wholesaleActive={wholesaleActive}
+                index={index}
                 onAddToCart={handleAddToCart}
               />
             ))}
@@ -447,14 +475,15 @@ export function StorefrontClient({
       <footer className="mt-12 border-t border-[#FAD4E4]/70 bg-[#FFF1F5]/50">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-[#2D2226]/65 sm:flex-row sm:px-6 lg:px-8">
           <div className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/zoe-logo.jpg"
-              alt="Zoe"
+              alt={settings.store_name || "ZOÉ COSMETICS"}
+              width={28}
+              height={28}
               className="h-7 w-7 rounded-lg border border-[#FAD4E4] object-cover"
             />
             <p>
-              © {new Date().getFullYear()}{" "}
+              © 2026{" "}
               <strong className="font-semibold text-[#2D2226]">
                 {settings.store_name || "ZOÉ COSMETICS"}
               </strong>
@@ -517,16 +546,18 @@ export function StorefrontClient({
         </button>
       )}
 
-      {/* Drawer del carrito */}
-      <CartDrawer
-        isOpen={cartOpen}
-        onClose={() => setCartOpen(false)}
-        items={cartItems}
-        settings={settings}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-        onClearCart={handleClearCart}
-      />
+      {/* Drawer del carrito (cargado de forma diferida solo al abrir) */}
+      {cartOpen && (
+        <CartDrawer
+          isOpen={cartOpen}
+          onClose={() => setCartOpen(false)}
+          items={cartItems}
+          settings={settings}
+          onUpdateQuantity={handleUpdateQuantity}
+          onRemoveItem={handleRemoveItem}
+          onClearCart={handleClearCart}
+        />
+      )}
     </div>
   );
 }

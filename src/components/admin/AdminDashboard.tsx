@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -20,9 +22,21 @@ import type {
 } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { ProductsTab } from "./ProductsTab";
-import { CategoriesTab } from "./CategoriesTab";
-import { OrdersTab } from "./OrdersTab";
-import { SettingsTab } from "./SettingsTab";
+
+const CategoriesTab = dynamic(
+  () => import("./CategoriesTab").then((mod) => mod.CategoriesTab),
+  { ssr: false }
+);
+
+const OrdersTab = dynamic(
+  () => import("./OrdersTab").then((mod) => mod.OrdersTab),
+  { ssr: false }
+);
+
+const SettingsTab = dynamic(
+  () => import("./SettingsTab").then((mod) => mod.SettingsTab),
+  { ssr: false }
+);
 
 type AdminTab = "products" | "categories" | "orders" | "settings";
 
@@ -50,45 +64,66 @@ export function AdminDashboard({
   const [orders, setOrders] = useState<OrderWithItems[]>(initialOrders);
   const [refreshing, setRefreshing] = useState(false);
 
+  const refreshSettings = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("store_settings")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle();
+    if (data) setSettings(data as StoreSettings);
+  }, []);
+
+  const refreshCategories = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("categories")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
+    if (data) setCategories(data as Category[]);
+  }, []);
+
+  const refreshProducts = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("products")
+      .select(`*, product_variants (*)`)
+      .order("created_at", { ascending: false });
+    if (data) {
+      setProducts(
+        (data as ProductWithVariants[]).map((p) => ({
+          ...p,
+          product_variants: (p.product_variants ?? []).sort((a, b) =>
+            a.shade_name.localeCompare(b.shade_name, "es")
+          ),
+        }))
+      );
+    }
+  }, []);
+
+  const refreshOrders = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("orders")
+      .select(`*, order_items (*)`)
+      .order("created_at", { ascending: false });
+    if (data) setOrders(data as OrderWithItems[]);
+  }, []);
+
   const refreshAll = useCallback(async () => {
     setRefreshing(true);
     try {
-      const supabase = createClient();
-      const [settingsRes, categoriesRes, productsRes, ordersRes] =
-        await Promise.all([
-          supabase.from("store_settings").select("*").eq("id", 1).maybeSingle(),
-          supabase
-            .from("categories")
-            .select("*")
-            .order("sort_order", { ascending: true })
-            .order("name", { ascending: true }),
-          supabase
-            .from("products")
-            .select(`*, product_variants (*)`)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("orders")
-            .select(`*, order_items (*)`)
-            .order("created_at", { ascending: false }),
-        ]);
-
-      if (settingsRes.data) setSettings(settingsRes.data as StoreSettings);
-      if (categoriesRes.data) setCategories(categoriesRes.data as Category[]);
-      if (productsRes.data) {
-        setProducts(
-          (productsRes.data as ProductWithVariants[]).map((p) => ({
-            ...p,
-            product_variants: (p.product_variants ?? []).sort((a, b) =>
-              a.shade_name.localeCompare(b.shade_name, "es")
-            ),
-          }))
-        );
-      }
-      if (ordersRes.data) setOrders(ordersRes.data as OrderWithItems[]);
+      await Promise.all([
+        refreshSettings(),
+        refreshCategories(),
+        refreshProducts(),
+        refreshOrders(),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [refreshSettings, refreshCategories, refreshProducts, refreshOrders]);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -139,10 +174,11 @@ export function AdminDashboard({
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 overflow-hidden rounded-2xl border border-[#FAD4E4] bg-[#FFA6DA] shadow-xs">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/zoe-logo.jpg"
-                alt="Logo Zoe"
+                alt="Logo ZOÉ COSMETICS"
+                width={40}
+                height={40}
                 className="h-full w-full object-cover"
               />
             </div>
@@ -236,21 +272,24 @@ export function AdminDashboard({
           <ProductsTab
             products={products}
             categories={categories}
-            onRefresh={refreshAll}
+            onRefresh={refreshProducts}
           />
         )}
         {activeTab === "categories" && (
-          <CategoriesTab categories={categories} onRefresh={refreshAll} />
+          <CategoriesTab
+            categories={categories}
+            onRefresh={refreshCategories}
+          />
         )}
         {activeTab === "orders" && (
           <OrdersTab
             orders={orders}
             storeName={settings.store_name || "ZOÉ COSMETICS"}
-            onRefresh={refreshAll}
+            onRefresh={refreshOrders}
           />
         )}
         {activeTab === "settings" && (
-          <SettingsTab settings={settings} onRefresh={refreshAll} />
+          <SettingsTab settings={settings} onRefresh={refreshSettings} />
         )}
       </main>
     </div>

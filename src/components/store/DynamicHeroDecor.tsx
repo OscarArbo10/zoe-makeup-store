@@ -1,11 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-interface ParallaxOffset {
-  x: number;
-  y: number;
-}
+import { useEffect, useRef } from "react";
 
 function FourPointSparkle({ className }: { className?: string }) {
   return (
@@ -21,43 +16,93 @@ function FourPointSparkle({ className }: { className?: string }) {
 }
 
 export function DynamicHeroDecor() {
-  const [offset, setOffset] = useState<ParallaxOffset>({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    let rafId: number | null = null;
+    let nextX = 0;
+    let nextY = 0;
+    let listenersActive = false;
+
+    const scheduleUpdate = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        el.style.setProperty("--px", nextX.toFixed(4));
+        el.style.setProperty("--py", nextY.toFixed(4));
+      });
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
-      const nx = (e.clientX / window.innerWidth - 0.5) * 2;
-      const ny = (e.clientY / window.innerHeight - 0.5) * 2;
-      setOffset({ x: nx, y: ny });
+      nextX = (e.clientX / window.innerWidth - 0.5) * 2;
+      nextY = (e.clientY / window.innerHeight - 0.5) * 2;
+      scheduleUpdate();
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       const touch = e.touches[0];
       if (!touch) return;
-      const nx = (touch.clientX / window.innerWidth - 0.5) * 2;
-      const ny = (touch.clientY / window.innerHeight - 0.5) * 2;
-      setOffset({ x: nx, y: ny });
+      nextX = (touch.clientX / window.innerWidth - 0.5) * 2;
+      nextY = (touch.clientY / window.innerHeight - 0.5) * 2;
+      scheduleUpdate();
     };
 
     const handleScroll = () => {
       const progress = Math.min(window.scrollY / 320, 1.5);
-      setOffset((prev) => ({
-        x: prev.x,
-        y: Math.max(-1.2, Math.min(1.2, progress - 0.2)),
-      }));
+      nextY = Math.max(-1.2, Math.min(1.2, progress - 0.2));
+      scheduleUpdate();
     };
 
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: true });
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
+    const attachListeners = () => {
+      if (listenersActive) return;
+      listenersActive = true;
+      window.addEventListener("mousemove", handleMouseMove, { passive: true });
+      window.addEventListener("touchmove", handleTouchMove, { passive: true });
+      window.addEventListener("scroll", handleScroll, { passive: true });
+    };
+
+    const detachListeners = () => {
+      if (!listenersActive) return;
+      listenersActive = false;
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("scroll", handleScroll);
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const isVisible = entries[0]?.isIntersecting ?? false;
+        if (isVisible) {
+          attachListeners();
+        } else {
+          detachListeners();
+        }
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      detachListeners();
     };
   }, []);
 
   return (
     <div
+      ref={containerRef}
       className="pointer-events-none absolute inset-0 overflow-hidden"
       aria-hidden="true"
     >
@@ -65,7 +110,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute -right-24 -top-24 transition-transform duration-700 ease-out"
         style={{
-          transform: `translate3d(${offset.x * -18}px, ${offset.y * -14}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * -18px), calc(var(--py, 0) * -14px), 0)",
         }}
       >
         <div className="animate-zoe-orb-drift h-64 w-64 rounded-full bg-[#FAD4E4]/60 blur-3xl sm:h-80 sm:w-80" />
@@ -73,7 +119,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute -left-24 bottom-0 transition-transform duration-700 ease-out"
         style={{
-          transform: `translate3d(${offset.x * 16}px, ${offset.y * 12}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * 16px), calc(var(--py, 0) * 12px), 0)",
         }}
       >
         <div className="animate-zoe-orb-drift-reverse h-56 w-56 rounded-full bg-[#F9A8D4]/35 blur-3xl sm:h-72 sm:w-72" />
@@ -83,7 +130,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute left-[4%] top-[12%] sm:left-[8%] sm:top-[18%] transition-transform duration-500 ease-out"
         style={{
-          transform: `translate3d(${offset.x * 14}px, ${offset.y * 10}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * 14px), calc(var(--py, 0) * 10px), 0)",
         }}
       >
         <div className="animate-zoe-float relative h-9 w-9 sm:h-12 sm:w-12 rounded-full border border-white/80 bg-gradient-to-br from-[#FFAED4]/70 via-[#FAD4E4]/55 to-white/80 shadow-[inset_-4px_-6px_12px_rgba(216,92,138,0.18),0_8px_20px_rgba(216,92,138,0.12)]">
@@ -94,7 +142,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute right-[4%] top-[14%] sm:right-[10%] sm:top-[22%] transition-transform duration-500 ease-out"
         style={{
-          transform: `translate3d(${offset.x * -16}px, ${offset.y * 12}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * -16px), calc(var(--py, 0) * 12px), 0)",
         }}
       >
         <div
@@ -108,7 +157,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute bottom-[10%] left-[6%] sm:bottom-[16%] sm:left-[14%] transition-transform duration-500 ease-out"
         style={{
-          transform: `translate3d(${offset.x * 12}px, ${offset.y * -12}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * 12px), calc(var(--py, 0) * -12px), 0)",
         }}
       >
         <div
@@ -122,7 +172,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute bottom-[12%] right-[6%] sm:bottom-[18%] sm:right-[14%] transition-transform duration-500 ease-out"
         style={{
-          transform: `translate3d(${offset.x * -12}px, ${offset.y * -10}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * -12px), calc(var(--py, 0) * -10px), 0)",
         }}
       >
         <div
@@ -133,11 +184,12 @@ export function DynamicHeroDecor() {
         </div>
       </div>
 
-      {/* Destellos 4 puntas (✦) exactamente como los del logo de Zoe */}
+      {/* Destellos 4 puntas (✦) */}
       <div
         className="absolute left-[14%] top-[24%] sm:left-[18%] sm:top-[28%] text-[#D85C8A]/65 transition-transform duration-500"
         style={{
-          transform: `translate3d(${offset.x * 20}px, ${offset.y * 14}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * 20px), calc(var(--py, 0) * 14px), 0)",
         }}
       >
         <FourPointSparkle className="animate-zoe-twinkle h-5 w-5 sm:h-6 sm:w-6" />
@@ -146,7 +198,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute right-[15%] top-[28%] sm:right-[20%] sm:top-[34%] text-[#D85C8A]/75 transition-transform duration-500"
         style={{
-          transform: `translate3d(${offset.x * -22}px, ${offset.y * 16}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * -22px), calc(var(--py, 0) * 16px), 0)",
         }}
       >
         <FourPointSparkle className="animate-zoe-twinkle h-6 w-6 sm:h-7 sm:w-7" />
@@ -155,7 +208,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute left-[18%] bottom-[20%] sm:left-[26%] sm:bottom-[22%] text-[#F472B6]/65 transition-transform duration-500"
         style={{
-          transform: `translate3d(${offset.x * 16}px, ${offset.y * -14}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * 16px), calc(var(--py, 0) * -14px), 0)",
         }}
       >
         <FourPointSparkle className="animate-zoe-twinkle h-4 w-4" />
@@ -164,7 +218,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute right-[18%] bottom-[22%] sm:right-[24%] sm:bottom-[24%] text-[#D85C8A]/60 transition-transform duration-500"
         style={{
-          transform: `translate3d(${offset.x * -18}px, ${offset.y * -12}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * -18px), calc(var(--py, 0) * -12px), 0)",
         }}
       >
         <FourPointSparkle className="animate-zoe-twinkle h-4 w-4 sm:h-5 sm:w-5" />
@@ -174,7 +229,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute left-[4%] bottom-[28%] hidden lg:flex items-center gap-2 rounded-2xl border border-[#FAD4E4] bg-white/85 px-3 py-2 shadow-sm backdrop-blur-xs transition-transform duration-500"
         style={{
-          transform: `translate3d(${offset.x * 10}px, ${offset.y * -8}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * 10px), calc(var(--py, 0) * -8px), 0)",
         }}
       >
         <div className="animate-zoe-float flex items-center gap-1.5">
@@ -190,7 +246,8 @@ export function DynamicHeroDecor() {
       <div
         className="absolute right-[4%] bottom-[30%] hidden lg:flex items-center gap-2 rounded-2xl border border-[#FAD4E4] bg-white/85 px-3 py-2 shadow-sm backdrop-blur-xs transition-transform duration-500"
         style={{
-          transform: `translate3d(${offset.x * -10}px, ${offset.y * 8}px, 0)`,
+          transform:
+            "translate3d(calc(var(--px, 0) * -10px), calc(var(--py, 0) * 8px), 0)",
         }}
       >
         <div className="animate-zoe-float-reverse flex items-center gap-1.5">

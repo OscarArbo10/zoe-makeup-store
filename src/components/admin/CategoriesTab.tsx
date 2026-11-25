@@ -5,6 +5,7 @@ import { Edit3, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import type { Category } from "@/types/database";
 import { slugify } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
+import { revalidateCatalog } from "@/app/admin/actions";
 
 interface CategoriesTabProps {
   categories: Category[];
@@ -67,7 +68,7 @@ export function CategoriesTab({ categories, onRefresh }: CategoriesTabProps) {
       }
 
       resetForm();
-      await onRefresh();
+      await Promise.all([onRefresh(), revalidateCatalog()]);
     } catch (err) {
       notify(
         "error",
@@ -96,7 +97,7 @@ export function CategoriesTab({ categories, onRefresh }: CategoriesTabProps) {
       if (error) throw new Error(error.message);
       notify("success", "Categoría eliminada.");
       if (editingId === cat.id) resetForm();
-      await onRefresh();
+      await Promise.all([onRefresh(), revalidateCatalog()]);
     } catch (err) {
       notify(
         "error",

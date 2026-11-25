@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
 import {
   ChevronDown,
   ChevronUp,
@@ -24,6 +25,7 @@ import type {
 import { formatCOP, slugify } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { uploadProductImage } from "@/lib/supabase/storage";
+import { revalidateCatalog } from "@/app/admin/actions";
 
 interface ProductsTabProps {
   products: ProductWithVariants[];
@@ -183,7 +185,7 @@ export function ProductsTab({
       }
 
       setProductModalOpen(false);
-      await onRefresh();
+      await Promise.all([onRefresh(), revalidateCatalog()]);
     } catch (err) {
       notify(
         "error",
@@ -206,7 +208,7 @@ export function ProductsTab({
         })
         .eq("id", product.id);
       if (error) throw new Error(error.message);
-      await onRefresh();
+      await Promise.all([onRefresh(), revalidateCatalog()]);
     } catch (err) {
       notify(
         "error",
@@ -234,7 +236,7 @@ export function ProductsTab({
         .eq("id", product.id);
       if (error) throw new Error(error.message);
       notify("success", "Producto eliminado.");
-      await onRefresh();
+      await Promise.all([onRefresh(), revalidateCatalog()]);
     } catch (err) {
       notify(
         "error",
@@ -326,7 +328,7 @@ export function ProductsTab({
       }
 
       setVariantForm(null);
-      await onRefresh();
+      await Promise.all([onRefresh(), revalidateCatalog()]);
     } catch (err) {
       notify(
         "error",
@@ -348,7 +350,7 @@ export function ProductsTab({
         .eq("id", variant.id);
       if (error) throw new Error(error.message);
       notify("success", "Tono eliminado.");
-      await onRefresh();
+      await Promise.all([onRefresh(), revalidateCatalog()]);
     } catch (err) {
       notify(
         "error",
@@ -359,8 +361,16 @@ export function ProductsTab({
     }
   };
 
+  const categoryNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of categories) {
+      map.set(c.id, c.name);
+    }
+    return map;
+  }, [categories]);
+
   const categoryNameById = (id: string | null) =>
-    categories.find((c) => c.id === id)?.name ?? "Sin categoría";
+    (id ? categoryNameMap.get(id) : undefined) ?? "Sin categoría";
 
   return (
     <div className="space-y-6">
@@ -417,10 +427,11 @@ export function ProductsTab({
                   <div className="flex items-center gap-4">
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]">
                       {product.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <Image
                           src={product.image_url}
                           alt={product.name}
+                          width={64}
+                          height={64}
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -800,10 +811,12 @@ export function ProductsTab({
                 </div>
                 {productForm.image_url && (
                   <div className="mt-2 flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={productForm.image_url}
                       alt="Vista previa"
+                      width={56}
+                      height={56}
+                      unoptimized
                       className="h-14 w-14 rounded-xl border border-[#FAD4E4] object-cover"
                     />
                     <button
@@ -980,10 +993,12 @@ export function ProductsTab({
                 </div>
                 {variantForm.image_url && (
                   <div className="mt-2 flex items-center gap-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={variantForm.image_url}
                       alt="Foto tono"
+                      width={48}
+                      height={48}
+                      unoptimized
                       className="h-12 w-12 rounded-xl border border-[#FAD4E4] object-cover"
                     />
                     <button

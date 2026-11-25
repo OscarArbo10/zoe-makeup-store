@@ -1,14 +1,16 @@
 import type { CartItem } from "@/types/database";
 
+const COP_FORMATTER = new Intl.NumberFormat("es-CO", {
+  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
+});
+
 /**
  * Formatea un monto en pesos colombianos (COP) sin decimales, ej. "$28.000".
  */
 export function formatCOP(amount: number): string {
   const safe = Number.isFinite(amount) ? Math.round(amount) : 0;
-  return `$${new Intl.NumberFormat("es-CO", {
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0,
-  }).format(safe)}`;
+  return `$${COP_FORMATTER.format(safe)}`;
 }
 
 /**
