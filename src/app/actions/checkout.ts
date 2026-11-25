@@ -2,7 +2,7 @@
 
 import { createPublicClient } from "@/lib/supabase/public";
 import { buildWhatsAppOrderUrl } from "@/lib/format";
-import type { CartItem } from "@/types/database";
+import type { CartItem, DeliveryMethod } from "@/types/database";
 
 export interface CheckoutItemInput {
   productId: string;
@@ -13,11 +13,8 @@ export interface CheckoutItemInput {
 export interface SubmitOrderInput {
   customerName: string;
   customerPhone: string;
-  customerDocument: string;
-  customerCity: string;
-  customerAddress: string;
-  customerNeighborhood: string;
-  notes?: string;
+  deliveryMethod: DeliveryMethod;
+  customerAddress?: string;
   items: CheckoutItemInput[];
 }
 
@@ -43,6 +40,7 @@ interface RpcOrderResponse {
   savings: number;
   store_name: string;
   whatsapp_number: string;
+  delivery_method: DeliveryMethod;
   items: CartItem[];
 }
 
@@ -52,35 +50,31 @@ export async function submitOrder(
   try {
     const trimmedName = input.customerName?.trim() ?? "";
     const trimmedPhone = input.customerPhone?.trim() ?? "";
-    const trimmedCity = input.customerCity?.trim() ?? "";
-    const trimmedDocument = input.customerDocument?.trim() ?? "";
-    const trimmedAddress = input.customerAddress?.trim() ?? "";
-    const trimmedNeighborhood = input.customerNeighborhood?.trim() ?? "";
-    const trimmedNotes = input.notes?.trim() ?? "";
+    const deliveryMethod: DeliveryMethod =
+      input.deliveryMethod === "recogida_en_tienda"
+        ? "recogida_en_tienda"
+        : "domicilio";
+    const trimmedAddress =
+      deliveryMethod === "domicilio" ? input.customerAddress?.trim() ?? "" : "";
 
-    if (
-      !trimmedName ||
-      !trimmedDocument ||
-      !trimmedPhone ||
-      !trimmedCity ||
-      !trimmedAddress ||
-      !trimmedNeighborhood
-    ) {
+    if (!trimmedName || !trimmedPhone) {
       return {
         ok: false,
-        error:
-          "Completa nombre, cédula, celular/WhatsApp, ciudad, dirección y barrio.",
+        error: "Por favor ingresa tu nombre completo y número de celular.",
+      };
+    }
+
+    if (deliveryMethod === "domicilio" && !trimmedAddress) {
+      return {
+        ok: false,
+        error: "Por favor ingresa tu dirección para el envío a domicilio.",
       };
     }
 
     if (
       trimmedName.length > 120 ||
-      trimmedDocument.length > 30 ||
       trimmedPhone.length > 30 ||
-      trimmedCity.length > 80 ||
-      trimmedAddress.length > 200 ||
-      trimmedNeighborhood.length > 100 ||
-      trimmedNotes.length > 500
+      trimmedAddress.length > 200
     ) {
       return {
         ok: false,
@@ -119,12 +113,9 @@ export async function submitOrder(
     const supabase = createPublicClient();
     const { data, error } = await supabase.rpc("create_public_order", {
       p_customer_name: trimmedName,
-      p_customer_document: trimmedDocument,
       p_customer_phone: trimmedPhone,
-      p_customer_city: trimmedCity,
+      p_delivery_method: deliveryMethod,
       p_customer_address: trimmedAddress,
-      p_customer_neighborhood: trimmedNeighborhood,
-      p_notes: trimmedNotes,
       p_items: normalizedItems,
     });
 
@@ -143,11 +134,8 @@ export async function submitOrder(
       orderNumber: orderData.order_number,
       customerName: trimmedName,
       customerPhone: trimmedPhone,
-      customerDocument: trimmedDocument,
-      customerCity: trimmedCity,
+      deliveryMethod,
       customerAddress: trimmedAddress,
-      customerNeighborhood: trimmedNeighborhood,
-      notes: trimmedNotes,
       appliedWholesale: orderData.applied_wholesale,
       retailSubtotal: orderData.retail_subtotal,
       totalAmount: orderData.total_amount,

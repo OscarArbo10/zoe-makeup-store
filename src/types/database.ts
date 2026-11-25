@@ -1,3 +1,5 @@
+export type DeliveryMethod = "domicilio" | "recogida_en_tienda";
+
 export type OrderStatus =
   | "pendiente"
   | "confirmado"
@@ -92,6 +94,7 @@ export interface Product {
   wholesale_price: number;
   image_url: string | null;
   image_urls: string[];
+  has_shades: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -124,6 +127,7 @@ export interface Order {
   customer_document: string | null;
   customer_address: string | null;
   customer_neighborhood: string | null;
+  delivery_method: DeliveryMethod;
   notes: string | null;
   applied_wholesale: boolean;
   retail_subtotal: number;

@@ -48,6 +48,8 @@ interface ProductFormState {
   retail_price: string;
   wholesale_price: string;
   image_urls: string[];
+  has_shades: boolean;
+  default_stock: string;
   is_active: boolean;
 }
 
@@ -71,6 +73,8 @@ const EMPTY_PRODUCT_FORM: ProductFormState = {
   retail_price: "",
   wholesale_price: "",
   image_urls: [],
+  has_shades: true,
+  default_stock: "10",
   is_active: true,
 };
 
@@ -149,6 +153,8 @@ export function ProductsTab({
       retail_price: String(product.retail_price),
       wholesale_price: String(product.wholesale_price),
       image_urls: existingImages,
+      has_shades: product.has_shades ?? true,
+      default_stock: String(product.product_variants[0]?.stock ?? 10),
       is_active: product.is_active,
     });
     setProductModalOpen(true);
@@ -302,9 +308,12 @@ export function ProductsTab({
         wholesale_price: wholesalePrice,
         image_url: finalImages[0] ?? null,
         image_urls: finalImages,
+        has_shades: productForm.has_shades,
         is_active: productForm.is_active,
         updated_at: new Date().toISOString(),
       };
+
+      let savedProductId = productForm.id;
 
       if (productForm.id) {
         const { error } = await supabase
@@ -312,7 +321,6 @@ export function ProductsTab({
           .update(payload)
           .eq("id", productForm.id);
         if (error) throw new Error(error.message);
-        notify("success", "Producto actualizado.");
       } else {
         const { data, error } = await supabase
           .from("products")
@@ -320,9 +328,54 @@ export function ProductsTab({
           .select("id")
           .single();
         if (error) throw new Error(error.message);
-        if (data?.id) setExpandedProductId(data.id);
-        notify("success", "Producto creado. Ahora puedes agregarle tonos.");
+        savedProductId = data?.id ?? null;
+        if (savedProductId && productForm.has_shades) {
+          setExpandedProductId(savedProductId);
+        }
       }
+
+      // Si el producto no funciona con tonos, asegurar una variante única automática con el stock indicado
+      if (!productForm.has_shades && savedProductId) {
+        const stockVal = Math.max(
+          0,
+          Math.round(Number(productForm.default_stock) || 0)
+        );
+        const existingProd = products.find((p) => p.id === savedProductId);
+        const firstVariant = existingProd?.product_variants[0];
+
+        if (firstVariant) {
+          const { error: varErr } = await supabase
+            .from("product_variants")
+            .update({
+              shade_name: "Único",
+              shade_hex: "#D85C8A",
+              stock: stockVal,
+              is_active: true,
+            })
+            .eq("id", firstVariant.id);
+          if (varErr) throw new Error(`Stock: ${varErr.message}`);
+        } else {
+          const { error: varErr } = await supabase
+            .from("product_variants")
+            .insert({
+              product_id: savedProductId,
+              shade_name: "Único",
+              shade_hex: "#D85C8A",
+              stock: stockVal,
+              is_active: true,
+            });
+          if (varErr) throw new Error(`Stock: ${varErr.message}`);
+        }
+      }
+
+      notify(
+        "success",
+        productForm.id
+          ? "Producto actualizado."
+          : productForm.has_shades
+          ? "Producto creado. Ahora puedes agregarle tonos."
+          : "Producto creado correctamente."
+      );
 
       setProductModalOpen(false);
       await Promise.all([onRefresh(), revalidateCatalog(), ...refreshTasks]);
@@ -648,33 +701,48 @@ export function ProductsTab({
                             {photoCount}
                           </strong>
                         </span>
-                        <span>
-                          Tonos:{" "}
-                          <strong className="text-[#2D2226]">
-                            {product.product_variants.length}
-                          </strong>
-                        </span>
+                        {product.has_shades === false ? (
+                          <span>
+                            Stock:{" "}
+                            <strong className="text-[#2D2226]">
+                              {product.product_variants[0]?.stock ?? 0}
+                            </strong>
+                          </span>
+                        ) : (
+                          <span>
+                            Tonos:{" "}
+                            <strong className="text-[#2D2226]">
+                              {product.product_variants.length}
+                            </strong>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Acciones del producto */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedProductId(isExpanded ? null : product.id)
-                      }
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#FAD4E4] bg-[#FFF1F5] px-3 py-2 text-xs font-semibold text-[#B94470] hover:bg-[#FAD4E4]/60"
-                    >
-                      <Palette className="h-3.5 w-3.5" />
-                      Tonos ({product.product_variants.length})
-                      {isExpanded ? (
-                        <ChevronUp className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      )}
-                    </button>
+                    {product.has_shades === false ? (
+                      <span className="rounded-xl border border-[#FAD4E4] bg-[#FFF1F5]/70 px-3 py-2 text-xs font-semibold text-[#B94470]">
+                        Sin tonos
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedProductId(isExpanded ? null : product.id)
+                        }
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#FAD4E4] bg-[#FFF1F5] px-3 py-2 text-xs font-semibold text-[#B94470] hover:bg-[#FAD4E4]/60"
+                      >
+                        <Palette className="h-3.5 w-3.5" />
+                        Tonos ({product.product_variants.length})
+                        {isExpanded ? (
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
 
                     <button
                       type="button"
@@ -716,7 +784,7 @@ export function ProductsTab({
                 </div>
 
                 {/* Sección expandible de tonos */}
-                {isExpanded && (
+                {isExpanded && product.has_shades !== false && (
                   <div className="border-t border-[#FAD4E4]/70 bg-[#FFF1F5]/40 p-4 sm:p-5">
                     <div className="mb-3 flex items-center justify-between">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-[#B94470]">
@@ -1133,6 +1201,45 @@ export function ProductsTab({
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Configuración de tonos */}
+              <div className="space-y-3 rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/35 p-3.5">
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-[#2D2226]">
+                  <input
+                    type="checkbox"
+                    checked={productForm.has_shades}
+                    onChange={(e) =>
+                      setProductForm((prev) => ({
+                        ...prev,
+                        has_shades: e.target.checked,
+                      }))
+                    }
+                    className="h-4 w-4 accent-[#D85C8A]"
+                  />
+                  Este producto funciona con tonos
+                </label>
+
+                {!productForm.has_shades && (
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-[#2D2226]/80">
+                      Stock disponible *
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      required
+                      value={productForm.default_stock}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({
+                          ...prev,
+                          default_stock: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2 text-sm focus:border-[#D85C8A] focus:outline-none"
+                    />
                   </div>
                 )}
               </div>

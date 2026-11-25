@@ -45,6 +45,11 @@ const CartDrawer = dynamic(
   { ssr: false }
 );
 
+const ProductDetailModal = dynamic(
+  () => import("./ProductDetailModal").then((mod) => mod.ProductDetailModal),
+  { ssr: false }
+);
+
 const CART_STORAGE_KEY = "zoe_makeup_cart_v1";
 const CART_CHANGE_EVENT = "zoe-cart-change";
 const EMPTY_CART: CartItem[] = [];
@@ -113,6 +118,8 @@ export function StorefrontClient({
   const [selectedBrandId, setSelectedBrandId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] =
+    useState<ProductWithVariants | null>(null);
   const [toast, setToast] = useState<{
     productName: string;
     shadeName: string;
@@ -260,12 +267,17 @@ export function StorefrontClient({
   const activeTotal = wholesaleActive ? wholesaleSubtotal : retailSubtotal;
 
   const handleAddToCart = useCallback(
-    (product: ProductWithVariants, variant: ProductVariant) => {
+    (
+      product: ProductWithVariants,
+      variant: ProductVariant,
+      quantity = 1
+    ) => {
+      const addQty = Math.max(1, Math.min(variant.stock, Math.floor(quantity)));
       const key = `${product.id}:${variant.id}`;
       updateCart((prev) => {
         const existing = prev.find((item) => item.key === key);
         if (existing) {
-          const nextQty = Math.min(variant.stock, existing.quantity + 1);
+          const nextQty = Math.min(variant.stock, existing.quantity + addQty);
           return prev.map((item) =>
             item.key === key
               ? { ...item, quantity: nextQty, maxStock: variant.stock }
@@ -282,11 +294,14 @@ export function StorefrontClient({
             productName: product.name,
             shadeName: variant.shade_name,
             shadeHex: variant.shade_hex || "#F48FB1",
-            imageUrl: variant.image_url || product.image_url,
+            imageUrl:
+              variant.image_url ||
+              product.image_urls?.[0] ||
+              product.image_url,
             retailPrice: product.retail_price,
             wholesalePrice: product.wholesale_price,
             maxStock: variant.stock,
-            quantity: 1,
+            quantity: addQty,
           },
         ];
       });
@@ -345,10 +360,7 @@ export function StorefrontClient({
 
   const handleViewFeatured = () => {
     if (!featuredProduct) return;
-    setSelectedBrandId("all");
-    setSelectedCategoryId("all");
-    setSearchQuery(featuredProduct.name);
-    scrollToCatalog();
+    setSelectedProduct(featuredProduct);
   };
 
   const handleSelectBrand = (brandId: string) => {
@@ -867,7 +879,7 @@ export function StorefrontClient({
                 }
                 wholesaleActive={wholesaleActive}
                 index={index}
-                onAddToCart={handleAddToCart}
+                onSelect={setSelectedProduct}
               />
             ))}
           </div>
@@ -943,7 +955,9 @@ export function StorefrontClient({
                 {toast.productName}
               </p>
               <p className="truncate text-[11px] text-[#B94470]">
-                Tono: {toast.shadeName} agregado
+                {toast.shadeName && toast.shadeName !== "Único"
+                  ? `Tono: ${toast.shadeName} agregado`
+                  : "Agregado al carrito"}
               </p>
             </div>
           </div>
@@ -973,6 +987,26 @@ export function StorefrontClient({
             {totalItemsCount}
           </span>
         </button>
+      )}
+
+      {/* Modal de detalle del producto (descripción y tonos) */}
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          categoryName={
+            selectedProduct.category_id
+              ? categoryMap.get(selectedProduct.category_id)
+              : undefined
+          }
+          brandName={
+            selectedProduct.brand_id
+              ? brandMap.get(selectedProduct.brand_id)
+              : undefined
+          }
+          wholesaleActive={wholesaleActive}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={handleAddToCart}
+        />
       )}
 
       {/* Drawer del carrito (cargado de forma diferida solo al abrir) */}

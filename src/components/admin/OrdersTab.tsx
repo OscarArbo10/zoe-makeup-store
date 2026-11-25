@@ -169,6 +169,11 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
                           Mayorista
                         </span>
                       )}
+                      <span className="rounded-full border border-[#FAD4E4] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[#B94470]">
+                        {order.delivery_method === "recogida_en_tienda"
+                          ? "Recogida en tienda"
+                          : "Domicilio"}
+                      </span>
                     </div>
 
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#2D2226]/70">
@@ -179,7 +184,7 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
                         <Phone className="h-3 w-3 text-[#D85C8A]" />
                         {order.customer_phone}
                       </span>
-                      {order.customer_city && (
+                      {(order.customer_address || order.customer_city) && (
                         <span className="inline-flex items-center gap-1">
                           <MapPin className="h-3 w-3 text-[#D85C8A]" />
                           {[
@@ -251,9 +256,11 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
                             <span className="font-semibold text-[#2D2226]">
                               {item.product_name}
                             </span>{" "}
-                            <span className="rounded-full bg-[#FAD4E4]/60 px-2 py-0.5 text-xs font-medium text-[#B94470]">
-                              Tono: {item.shade_name}
-                            </span>
+                            {item.shade_name && item.shade_name !== "Único" && (
+                              <span className="rounded-full bg-[#FAD4E4]/60 px-2 py-0.5 text-xs font-medium text-[#B94470]">
+                                Tono: {item.shade_name}
+                              </span>
+                            )}
                             <span className="ml-2 text-xs text-[#2D2226]/60">
                               x{item.quantity} ({formatCOP(item.unit_price_applied)} c/u)
                             </span>

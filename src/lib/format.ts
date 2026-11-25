@@ -1,4 +1,4 @@
-import type { CartItem } from "@/types/database";
+import type { CartItem, DeliveryMethod } from "@/types/database";
 
 const COP_FORMATTER = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
@@ -47,11 +47,8 @@ export interface WhatsAppOrderMessageParams {
   orderNumber: number;
   customerName: string;
   customerPhone: string;
-  customerDocument?: string;
-  customerCity?: string;
+  deliveryMethod: DeliveryMethod;
   customerAddress?: string;
-  customerNeighborhood?: string;
-  notes?: string;
   appliedWholesale: boolean;
   retailSubtotal: number;
   totalAmount: number;
@@ -72,18 +69,19 @@ export function buildWhatsAppOrderUrl(
     ``,
     `*Pedido #${params.orderNumber}*`,
     `*Cliente:* ${params.customerName}`,
-    `*Cédula:* ${params.customerDocument?.trim() ?? ""}`,
-    `*Celular/WhatsApp:* ${params.customerPhone}`,
+    `*Celular:* ${params.customerPhone}`,
+    `*Entrega:* ${
+      params.deliveryMethod === "recogida_en_tienda"
+        ? "Recogida en tienda"
+        : "Domicilio"
+    }`,
   ];
 
-  if (params.customerCity?.trim()) {
-    lines.push(`*Ciudad:* ${params.customerCity.trim()}`);
-  }
-  if (params.customerAddress?.trim()) {
+  if (
+    params.deliveryMethod === "domicilio" &&
+    params.customerAddress?.trim()
+  ) {
     lines.push(`*Dirección:* ${params.customerAddress.trim()}`);
-  }
-  if (params.customerNeighborhood?.trim()) {
-    lines.push(`*Barrio:* ${params.customerNeighborhood.trim()}`);
   }
 
   lines.push(
@@ -98,8 +96,12 @@ export function buildWhatsAppOrderUrl(
       ? item.wholesalePrice
       : item.retailPrice;
     const lineTotal = unitPrice * item.quantity;
+    const shadeSuffix =
+      item.shadeName && item.shadeName !== "Único"
+        ? ` — Tono: ${item.shadeName}`
+        : "";
     lines.push(
-      `• ${item.productName} — Tono: ${item.shadeName} (x${item.quantity}) = ${formatCOP(
+      `• ${item.productName}${shadeSuffix} (x${item.quantity}) = ${formatCOP(
         lineTotal
       )}`
     );
@@ -112,11 +114,7 @@ export function buildWhatsAppOrderUrl(
   }
   lines.push(`*Total a pagar:* ${formatCOP(params.totalAmount)}`);
 
-  if (params.notes?.trim()) {
-    lines.push(``, `*Notas:* ${params.notes.trim()}`);
-  }
-
-  lines.push(``, `Quedo atenta para confirmar el pago y envío. Gracias!`);
+  lines.push(``, `Quedo atenta para confirmar el pago y entrega. Gracias!`);
 
   const encoded = encodeURIComponent(lines.join("\n"));
   return `https://wa.me/${cleanPhone}?text=${encoded}`;

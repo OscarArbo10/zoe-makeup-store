@@ -11,10 +11,12 @@ import {
   Plus,
   ShoppingBag,
   Sparkles,
+  Store,
   Trash2,
+  Truck,
   X,
 } from "lucide-react";
-import type { CartItem, StoreSettings } from "@/types/database";
+import type { CartItem, DeliveryMethod, StoreSettings } from "@/types/database";
 import { formatCOP } from "@/lib/format";
 import { submitOrder } from "@/app/actions/checkout";
 
@@ -51,11 +53,9 @@ export function CartDrawer({
 }: CartDrawerProps) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [customerDocument, setCustomerDocument] = useState("");
-  const [customerCity, setCustomerCity] = useState("");
+  const [deliveryMethod, setDeliveryMethod] =
+    useState<DeliveryMethod>("domicilio");
   const [customerAddress, setCustomerAddress] = useState("");
-  const [customerNeighborhood, setCustomerNeighborhood] = useState("");
-  const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [completedOrder, setCompletedOrder] =
@@ -96,18 +96,15 @@ export function CartDrawer({
 
     const trimmedName = customerName.trim();
     const trimmedPhone = customerPhone.trim();
+    const trimmedAddress = customerAddress.trim();
 
-    if (
-      !trimmedName ||
-      !trimmedPhone ||
-      !customerDocument.trim() ||
-      !customerCity.trim() ||
-      !customerAddress.trim() ||
-      !customerNeighborhood.trim()
-    ) {
-      setErrorMsg(
-        "Completa nombre, cédula, celular/WhatsApp, ciudad, dirección y barrio."
-      );
+    if (!trimmedName || !trimmedPhone) {
+      setErrorMsg("Por favor ingresa tu nombre completo y número de celular.");
+      return;
+    }
+
+    if (deliveryMethod === "domicilio" && !trimmedAddress) {
+      setErrorMsg("Por favor ingresa tu dirección para el envío a domicilio.");
       return;
     }
 
@@ -117,11 +114,8 @@ export function CartDrawer({
       const result = await submitOrder({
         customerName: trimmedName,
         customerPhone: trimmedPhone,
-        customerDocument: customerDocument.trim(),
-        customerCity: customerCity.trim(),
-        customerAddress: customerAddress.trim(),
-        customerNeighborhood: customerNeighborhood.trim(),
-        notes: notes.trim(),
+        deliveryMethod,
+        customerAddress: deliveryMethod === "domicilio" ? trimmedAddress : "",
         items: items.map((item) => ({
           productId: item.productId,
           variantId: item.variantId,
@@ -148,11 +142,8 @@ export function CartDrawer({
       onClearCart();
       setCustomerName("");
       setCustomerPhone("");
-      setCustomerDocument("");
-      setCustomerCity("");
+      setDeliveryMethod("domicilio");
       setCustomerAddress("");
-      setCustomerNeighborhood("");
-      setNotes("");
     } catch (err) {
       const msg =
         err instanceof Error
@@ -378,13 +369,15 @@ export function CartDrawer({
                           <h4 className="text-sm font-semibold leading-tight text-[#2D2226]">
                             {item.productName}
                           </h4>
-                          <div className="mt-1 flex items-center gap-1.5 text-xs text-[#2D2226]/70">
-                            <span
-                              className="inline-block h-3 w-3 rounded-full ring-1 ring-[#2D2226]/20"
-                              style={{ backgroundColor: item.shadeHex }}
-                            />
-                            <span>{item.shadeName}</span>
-                          </div>
+                          {item.shadeName && item.shadeName !== "Único" && (
+                            <div className="mt-1 flex items-center gap-1.5 text-xs text-[#2D2226]/70">
+                              <span
+                                className="inline-block h-3 w-3 rounded-full ring-1 ring-[#2D2226]/20"
+                                style={{ backgroundColor: item.shadeHex }}
+                              />
+                              <span>{item.shadeName}</span>
+                            </div>
+                          )}
                         </div>
 
                         <button
@@ -476,6 +469,7 @@ export function CartDrawer({
                   <input
                     type="text"
                     required
+                    maxLength={120}
                     autoComplete="name"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
@@ -484,80 +478,69 @@ export function CartDrawer({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className={LABEL_CLASS}>Número de celular *</label>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={30}
+                    autoComplete="tel"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="Ej. 300 123 4567"
+                    className={INPUT_CLASS}
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL_CLASS}>Tipo de entrega *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod("domicilio")}
+                      className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all ${
+                        deliveryMethod === "domicilio"
+                          ? "border-[#D85C8A] bg-[#D85C8A] text-white shadow-xs"
+                          : "border-[#FAD4E4] bg-white text-[#2D2226] hover:bg-[#FFF1F5]"
+                      }`}
+                    >
+                      <Truck className="h-4 w-4 shrink-0" />
+                      Domicilio
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod("recogida_en_tienda")}
+                      className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all ${
+                        deliveryMethod === "recogida_en_tienda"
+                          ? "border-[#D85C8A] bg-[#D85C8A] text-white shadow-xs"
+                          : "border-[#FAD4E4] bg-white text-[#2D2226] hover:bg-[#FFF1F5]"
+                      }`}
+                    >
+                      <Store className="h-4 w-4 shrink-0" />
+                      Recogida en tienda
+                    </button>
+                  </div>
+                </div>
+
+                {deliveryMethod === "domicilio" ? (
                   <div>
-                    <label className={LABEL_CLASS}>Cédula *</label>
+                    <label className={LABEL_CLASS}>Dirección *</label>
                     <input
                       type="text"
-                      inputMode="numeric"
                       required
-                      value={customerDocument}
-                      onChange={(e) => setCustomerDocument(e.target.value)}
-                      placeholder="Ej. 1234567890"
+                      maxLength={200}
+                      autoComplete="street-address"
+                      value={customerAddress}
+                      onChange={(e) => setCustomerAddress(e.target.value)}
+                      placeholder="Ej. Calle 5 # 38-20, Barrio San Fernando"
                       className={INPUT_CLASS}
                     />
                   </div>
-                  <div>
-                    <label className={LABEL_CLASS}>Celular / WhatsApp *</label>
-                    <input
-                      type="tel"
-                      required
-                      autoComplete="tel"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="Ej. 300 123 4567"
-                      className={INPUT_CLASS}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className={LABEL_CLASS}>Ciudad *</label>
-                  <input
-                    type="text"
-                    required
-                    value={customerCity}
-                    onChange={(e) => setCustomerCity(e.target.value)}
-                    placeholder="Ej. Cali"
-                    className={INPUT_CLASS}
-                  />
-                </div>
-
-                <div>
-                  <label className={LABEL_CLASS}>Dirección *</label>
-                  <input
-                    type="text"
-                    required
-                    autoComplete="street-address"
-                    value={customerAddress}
-                    onChange={(e) => setCustomerAddress(e.target.value)}
-                    placeholder="Ej. Calle 5 # 38-20, Apto 301"
-                    className={INPUT_CLASS}
-                  />
-                </div>
-
-                <div>
-                  <label className={LABEL_CLASS}>Barrio *</label>
-                  <input
-                    type="text"
-                    required
-                    value={customerNeighborhood}
-                    onChange={(e) => setCustomerNeighborhood(e.target.value)}
-                    placeholder="Ej. San Fernando"
-                    className={INPUT_CLASS}
-                  />
-                </div>
-
-                <div>
-                  <label className={LABEL_CLASS}>Nota (opcional)</label>
-                  <textarea
-                    rows={2}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Indicaciones de entrega o comentarios..."
-                    className={`${INPUT_CLASS} resize-none`}
-                  />
-                </div>
+                ) : (
+                  <p className="rounded-xl border border-[#FAD4E4] bg-[#FFF1F5]/70 px-3.5 py-2.5 text-xs font-medium text-[#B94470]">
+                    Recogerás tu pedido directamente en tienda.
+                  </p>
+                )}
               </div>
 
               {errorMsg && (
