@@ -2,7 +2,13 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Check, ShoppingBag, Sparkles } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ShoppingBag,
+  Sparkles,
+} from "lucide-react";
 import type { ProductVariant, ProductWithVariants } from "@/types/database";
 import { formatCOP } from "@/lib/format";
 
@@ -37,8 +43,10 @@ export const ProductCard = memo(function ProductCard({
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     defaultVariantId
   );
+  const [photoIndex, setPhotoIndex] = useState(0);
   const [justAdded, setJustAdded] = useState(false);
   const justAddedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartXRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
@@ -56,9 +64,58 @@ export const ProductCard = memo(function ProductCard({
     [activeVariants, selectedVariantId]
   );
 
-  // Si el tono seleccionado tiene imagen propia, se muestra esa; si no, la imagen principal del producto
-  const displayImageUrl = selectedVariant?.image_url || product.image_url;
+  // Galería: si el tono seleccionado tiene foto propia, va primero, seguida por las fotos del producto
+  const galleryImages = useMemo(() => {
+    const list: string[] = [];
+    if (selectedVariant?.image_url) {
+      list.push(selectedVariant.image_url);
+    }
+    const prodImgs =
+      product.image_urls && product.image_urls.length > 0
+        ? product.image_urls
+        : product.image_url
+        ? [product.image_url]
+        : [];
+    for (const url of prodImgs) {
+      if (url && !list.includes(url)) {
+        list.push(url);
+      }
+    }
+    return list;
+  }, [product.image_urls, product.image_url, selectedVariant?.image_url]);
+
+  const safePhotoIndex =
+    galleryImages.length > 0 ? photoIndex % galleryImages.length : 0;
+  const displayImageUrl = galleryImages[safePhotoIndex] ?? null;
+  const hasMultiplePhotos = galleryImages.length > 1;
   const isOutOfStock = !selectedVariant || selectedVariant.stock <= 0;
+
+  const goPrevPhoto = () => {
+    if (galleryImages.length <= 1) return;
+    setPhotoIndex(
+      (prev) => (prev - 1 + galleryImages.length) % galleryImages.length
+    );
+  };
+
+  const goNextPhoto = () => {
+    if (galleryImages.length <= 1) return;
+    setPhotoIndex((prev) => (prev + 1) % galleryImages.length);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!hasMultiplePhotos || touchStartXRef.current === null) return;
+    const endX = e.changedTouches[0]?.clientX;
+    if (typeof endX === "number") {
+      const delta = endX - touchStartXRef.current;
+      if (delta <= -32) goNextPhoto();
+      else if (delta >= 32) goPrevPhoto();
+    }
+    touchStartXRef.current = null;
+  };
 
   const handleAdd = () => {
     if (!selectedVariant || selectedVariant.stock <= 0) return;
@@ -70,8 +127,12 @@ export const ProductCard = memo(function ProductCard({
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-[#FAD4E4]/70 bg-white shadow-[0_8px_30px_rgb(216,92,138,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#FAD4E4] hover:shadow-[0_14px_34px_rgb(216,92,138,0.12)] sm:rounded-3xl">
-      {/* Imagen del producto / tono */}
-      <div className="relative aspect-square w-full overflow-hidden bg-[#FFF1F5]">
+      {/* Imagen / carrusel de fotos del producto */}
+      <div
+        className="relative aspect-square w-full overflow-hidden bg-[#FFF1F5]"
+        onTouchStart={hasMultiplePhotos ? handleTouchStart : undefined}
+        onTouchEnd={hasMultiplePhotos ? handleTouchEnd : undefined}
+      >
         {displayImageUrl ? (
           <Image
             src={displayImageUrl}
@@ -101,6 +162,48 @@ export const ProductCard = memo(function ProductCard({
               {selectedVariant?.shade_name || "ZOÉ COSMETICS"}
             </span>
           </div>
+        )}
+
+        {/* Controles del carrusel si tiene varias fotos */}
+        {hasMultiplePhotos && (
+          <>
+            <button
+              type="button"
+              onClick={goPrevPhoto}
+              aria-label="Foto anterior"
+              className="absolute left-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-[#2D2226] shadow-sm backdrop-blur-xs transition-opacity hover:bg-white sm:left-2 sm:opacity-0 sm:group-hover:opacity-100"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={goNextPhoto}
+              aria-label="Siguiente foto"
+              className="absolute right-1.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/85 text-[#2D2226] shadow-sm backdrop-blur-xs transition-opacity hover:bg-white sm:right-2 sm:opacity-0 sm:group-hover:opacity-100"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+
+            <div
+              className={`absolute left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-[#2D2226]/35 px-2 py-1 backdrop-blur-xs ${
+                isOutOfStock ? "bottom-7 sm:bottom-8" : "bottom-2"
+              }`}
+            >
+              {galleryImages.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setPhotoIndex(i)}
+                  aria-label={`Ver foto ${i + 1}`}
+                  className={`h-1.5 cursor-pointer rounded-full transition-all ${
+                    i === safePhotoIndex
+                      ? "w-3.5 bg-white"
+                      : "w-1.5 bg-white/60 hover:bg-white/90"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {/* Badges superiores */}
@@ -219,7 +322,10 @@ export const ProductCard = memo(function ProductCard({
                   <button
                     key={variant.id}
                     type="button"
-                    onClick={() => setSelectedVariantId(variant.id)}
+                    onClick={() => {
+                      setSelectedVariantId(variant.id);
+                      setPhotoIndex(0);
+                    }}
                     title={
                       depleted
                         ? `${variant.shade_name} (Agotado)`

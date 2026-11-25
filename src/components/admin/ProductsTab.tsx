@@ -13,6 +13,7 @@ import {
   Palette,
   Plus,
   Save,
+  Star,
   Trash2,
   Upload,
   X,
@@ -33,6 +34,8 @@ interface ProductsTabProps {
   categories: Category[];
   brands: Brand[];
   onRefresh: () => Promise<void>;
+  onRefreshCategories: () => Promise<void>;
+  onRefreshBrands: () => Promise<void>;
 }
 
 interface ProductFormState {
@@ -44,7 +47,7 @@ interface ProductFormState {
   description: string;
   retail_price: string;
   wholesale_price: string;
-  image_url: string;
+  image_urls: string[];
   is_active: boolean;
 }
 
@@ -67,7 +70,7 @@ const EMPTY_PRODUCT_FORM: ProductFormState = {
   description: "",
   retail_price: "",
   wholesale_price: "",
-  image_url: "",
+  image_urls: [],
   is_active: true,
 };
 
@@ -76,10 +79,17 @@ export function ProductsTab({
   categories,
   brands,
   onRefresh,
+  onRefreshCategories,
+  onRefreshBrands,
 }: ProductsTabProps) {
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [productForm, setProductForm] =
     useState<ProductFormState>(EMPTY_PRODUCT_FORM);
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingBrand, setCreatingBrand] = useState(false);
+  const [newBrandName, setNewBrandName] = useState("");
+  const [photoUrlInput, setPhotoUrlInput] = useState("");
   const [savingProduct, setSavingProduct] = useState(false);
   const [uploadingProductImg, setUploadingProductImg] = useState(false);
 
@@ -103,6 +113,11 @@ export function ProductsTab({
   };
 
   const openCreateProduct = () => {
+    setCreatingCategory(categories.length === 0);
+    setNewCategoryName("");
+    setCreatingBrand(brands.length === 0);
+    setNewBrandName("");
+    setPhotoUrlInput("");
     setProductForm({
       ...EMPTY_PRODUCT_FORM,
       category_id: categories[0]?.id ?? "",
@@ -112,6 +127,18 @@ export function ProductsTab({
   };
 
   const openEditProduct = (product: ProductWithVariants) => {
+    const existingImages =
+      product.image_urls && product.image_urls.length > 0
+        ? product.image_urls
+        : product.image_url
+        ? [product.image_url]
+        : [];
+
+    setCreatingCategory(false);
+    setNewCategoryName("");
+    setCreatingBrand(false);
+    setNewBrandName("");
+    setPhotoUrlInput("");
     setProductForm({
       id: product.id,
       name: product.name,
@@ -121,26 +148,37 @@ export function ProductsTab({
       description: product.description ?? "",
       retail_price: String(product.retail_price),
       wholesale_price: String(product.wholesale_price),
-      image_url: product.image_url ?? "",
+      image_urls: existingImages,
       is_active: product.is_active,
     });
     setProductModalOpen(true);
   };
 
-  const handleUploadProductPhoto = async (
+  const handleUploadProductPhotos = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
     setUploadingProductImg(true);
     try {
-      const publicUrl = await uploadProductImage(file, "products");
-      setProductForm((prev) => ({ ...prev, image_url: publicUrl }));
-      notify("success", "Imagen de producto subida correctamente.");
+      const uploadedUrls = await Promise.all(
+        files.map((file) => uploadProductImage(file, "products"))
+      );
+      setProductForm((prev) => ({
+        ...prev,
+        image_urls: [...prev.image_urls, ...uploadedUrls],
+      }));
+      notify(
+        "success",
+        uploadedUrls.length === 1
+          ? "Foto subida correctamente."
+          : `${uploadedUrls.length} fotos subidas correctamente.`
+      );
     } catch (err) {
       notify(
         "error",
-        err instanceof Error ? err.message : "Error al subir la imagen."
+        err instanceof Error ? err.message : "Error al subir las imágenes."
       );
     } finally {
       setUploadingProductImg(false);
@@ -148,28 +186,122 @@ export function ProductsTab({
     }
   };
 
+  const handleAddPhotoUrl = () => {
+    const trimmed = photoUrlInput.trim();
+    if (!trimmed) return;
+    setProductForm((prev) =>
+      prev.image_urls.includes(trimmed)
+        ? prev
+        : { ...prev, image_urls: [...prev.image_urls, trimmed] }
+    );
+    setPhotoUrlInput("");
+  };
+
+  const handleSetCoverPhoto = (idx: number) => {
+    setProductForm((prev) => {
+      if (idx <= 0 || idx >= prev.image_urls.length) return prev;
+      const chosen = prev.image_urls[idx];
+      const rest = prev.image_urls.filter((_, i) => i !== idx);
+      return { ...prev, image_urls: [chosen, ...rest] };
+    });
+  };
+
+  const handleRemovePhoto = (idx: number) => {
+    setProductForm((prev) => ({
+      ...prev,
+      image_urls: prev.image_urls.filter((_, i) => i !== idx),
+    }));
+  };
+
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingProduct(true);
     try {
       const supabase = createClient();
-      const retailPrice = Math.max(0, Math.round(Number(productForm.retail_price) || 0));
+      const refreshTasks: Promise<unknown>[] = [];
+
+      // 1. Resolver categoría (existente o crear nueva en línea)
+      let resolvedCategoryId: string | null = productForm.category_id || null;
+      if (creatingCategory) {
+        const trimmedCat = newCategoryName.trim();
+        if (trimmedCat) {
+          const catSlug = slugify(trimmedCat) || `cat-${Date.now()}`;
+          const { data: catData, error: catErr } = await supabase
+            .from("categories")
+            .upsert(
+              {
+                name: trimmedCat,
+                slug: catSlug,
+                sort_order: categories.length,
+              },
+              { onConflict: "slug" }
+            )
+            .select("id")
+            .single();
+          if (catErr) throw new Error(`Categoría: ${catErr.message}`);
+          resolvedCategoryId = catData?.id ?? null;
+          refreshTasks.push(onRefreshCategories());
+        } else {
+          resolvedCategoryId = null;
+        }
+      }
+
+      // 2. Resolver marca (existente o crear nueva en línea)
+      let resolvedBrandId: string | null = productForm.brand_id || null;
+      if (creatingBrand) {
+        const trimmedBrand = newBrandName.trim();
+        if (trimmedBrand) {
+          const brandSlug = slugify(trimmedBrand) || `marca-${Date.now()}`;
+          const { data: brandData, error: brandErr } = await supabase
+            .from("brands")
+            .upsert(
+              {
+                name: trimmedBrand,
+                slug: brandSlug,
+                sort_order: brands.length,
+              },
+              { onConflict: "slug" }
+            )
+            .select("id")
+            .single();
+          if (brandErr) throw new Error(`Marca: ${brandErr.message}`);
+          resolvedBrandId = brandData?.id ?? null;
+          refreshTasks.push(onRefreshBrands());
+        } else {
+          resolvedBrandId = null;
+        }
+      }
+
+      // Si dejó una URL escrita en el campo auxiliar sin pulsar "Añadir", incluirla también
+      const pendingUrl = photoUrlInput.trim();
+      const finalImages =
+        pendingUrl && !productForm.image_urls.includes(pendingUrl)
+          ? [...productForm.image_urls, pendingUrl]
+          : productForm.image_urls;
+
+      const retailPrice = Math.max(
+        0,
+        Math.round(Number(productForm.retail_price) || 0)
+      );
       const wholesalePrice = Math.max(
         0,
         Math.round(Number(productForm.wholesale_price) || 0)
       );
       const finalSlug =
-        productForm.slug.trim() || slugify(productForm.name) || `prod-${Date.now()}`;
+        productForm.slug.trim() ||
+        slugify(productForm.name) ||
+        `prod-${Date.now()}`;
 
       const payload = {
         name: productForm.name.trim(),
         slug: finalSlug,
-        category_id: productForm.category_id || null,
-        brand_id: productForm.brand_id || null,
+        category_id: resolvedCategoryId,
+        brand_id: resolvedBrandId,
         description: productForm.description.trim() || null,
         retail_price: retailPrice,
         wholesale_price: wholesalePrice,
-        image_url: productForm.image_url.trim() || null,
+        image_url: finalImages[0] ?? null,
+        image_urls: finalImages,
         is_active: productForm.is_active,
         updated_at: new Date().toISOString(),
       };
@@ -193,7 +325,7 @@ export function ProductsTab({
       }
 
       setProductModalOpen(false);
-      await Promise.all([onRefresh(), revalidateCatalog()]);
+      await Promise.all([onRefresh(), revalidateCatalog(), ...refreshTasks]);
     } catch (err) {
       notify(
         "error",
@@ -400,7 +532,8 @@ export function ProductsTab({
             Productos y Tonos
           </h2>
           <p className="text-xs text-[#2D2226]/65 sm:text-sm">
-            Administra tu catálogo, fotos, precios detal/mayor y tonos disponibles.
+            Administra tu catálogo, galería de fotos, precios detal/mayor y
+            tonos disponibles.
           </p>
         </div>
 
@@ -436,6 +569,13 @@ export function ProductsTab({
         ) : (
           products.map((product) => {
             const isExpanded = expandedProductId === product.id;
+            const photoCount =
+              product.image_urls && product.image_urls.length > 0
+                ? product.image_urls.length
+                : product.image_url
+                ? 1
+                : 0;
+            const coverUrl = product.image_urls?.[0] || product.image_url;
 
             return (
               <div
@@ -444,10 +584,10 @@ export function ProductsTab({
               >
                 <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]">
-                      {product.image_url ? (
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]">
+                      {coverUrl ? (
                         <Image
-                          src={product.image_url}
+                          src={coverUrl}
                           alt={product.name}
                           width={64}
                           height={64}
@@ -457,6 +597,11 @@ export function ProductsTab({
                         <div className="flex h-full w-full items-center justify-center text-[#D85C8A]/60">
                           <ImagePlus className="h-6 w-6" />
                         </div>
+                      )}
+                      {photoCount > 1 && (
+                        <span className="absolute bottom-1 right-1 rounded-md bg-[#2D2226]/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                          {photoCount}
+                        </span>
                       )}
                     </div>
 
@@ -495,6 +640,12 @@ export function ProductsTab({
                           Mayor:{" "}
                           <strong className="text-[#D85C8A]">
                             {formatCOP(product.wholesale_price)}
+                          </strong>
+                        </span>
+                        <span>
+                          Fotos:{" "}
+                          <strong className="text-[#2D2226]">
+                            {photoCount}
                           </strong>
                         </span>
                         <span>
@@ -593,7 +744,7 @@ export function ProductsTab({
                             key={variant.id}
                             className="flex items-center justify-between gap-3 rounded-2xl border border-[#FAD4E4] bg-white p-3"
                           >
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex min-w-0 items-center gap-3">
                               <span
                                 className="h-8 w-8 shrink-0 rounded-full ring-2 ring-[#FAD4E4]"
                                 style={{
@@ -659,7 +810,7 @@ export function ProductsTab({
       {/* Modal Crear/Editar Producto */}
       {productModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2D2226]/45 p-4 backdrop-blur-[2px]">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[#FAD4E4] bg-white p-6 shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[#FAD4E4] bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#FAD4E4]/70 pb-3">
               <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-[#2D2226]">
                 {productForm.id ? "Editar producto" : "Nuevo producto"}
@@ -690,56 +841,117 @@ export function ProductsTab({
                       slug: prev.id ? prev.slug : slugify(name),
                     }));
                   }}
-                  placeholder="Ej. Gloss Hidratante Zoe"
+                  placeholder="Ej. Gloss Ultra Shine Bloomshell"
                   className="w-full rounded-xl border border-[#FAD4E4] px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-[#2D2226]/80">
-                    Categoría
-                  </label>
-                  <select
-                    value={productForm.category_id}
-                    onChange={(e) =>
-                      setProductForm((prev) => ({
-                        ...prev,
-                        category_id: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
-                  >
-                    <option value="">Sin categoría</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
+              {/* Categoría y Marca: elegir existente o crear nueva */}
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                {/* Categoría */}
+                <div className="rounded-2xl border border-[#FAD4E4]/80 bg-[#FFF1F5]/35 p-3">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <label className="text-xs font-semibold text-[#2D2226]/85">
+                      Categoría
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreatingCategory((prev) => !prev);
+                        setNewCategoryName("");
+                      }}
+                      className="cursor-pointer text-[11px] font-bold text-[#D85C8A] hover:underline"
+                    >
+                      {creatingCategory ? "Elegir existente" : "+ Crear nueva"}
+                    </button>
+                  </div>
+
+                  {creatingCategory ? (
+                    <input
+                      type="text"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="Nombre de nueva categoría..."
+                      className="w-full rounded-xl border border-[#D85C8A]/60 bg-white px-3 py-2 text-sm focus:border-[#D85C8A] focus:outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={productForm.category_id}
+                      onChange={(e) => {
+                        if (e.target.value === "__new__") {
+                          setCreatingCategory(true);
+                          setNewCategoryName("");
+                        } else {
+                          setProductForm((prev) => ({
+                            ...prev,
+                            category_id: e.target.value,
+                          }));
+                        }
+                      }}
+                      className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3 py-2 text-sm focus:border-[#D85C8A] focus:outline-none"
+                    >
+                      <option value="">Sin categoría</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                      <option value="__new__">+ Crear nueva categoría...</option>
+                    </select>
+                  )}
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-[#2D2226]/80">
-                    Marca
-                  </label>
-                  <select
-                    value={productForm.brand_id}
-                    onChange={(e) =>
-                      setProductForm((prev) => ({
-                        ...prev,
-                        brand_id: e.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
-                  >
-                    <option value="">Sin marca</option>
-                    {brands.map((brand) => (
-                      <option key={brand.id} value={brand.id}>
-                        {brand.name}
-                      </option>
-                    ))}
-                  </select>
+                {/* Marca */}
+                <div className="rounded-2xl border border-[#FAD4E4]/80 bg-[#FFF1F5]/35 p-3">
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <label className="text-xs font-semibold text-[#2D2226]/85">
+                      Marca
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreatingBrand((prev) => !prev);
+                        setNewBrandName("");
+                      }}
+                      className="cursor-pointer text-[11px] font-bold text-[#D85C8A] hover:underline"
+                    >
+                      {creatingBrand ? "Elegir existente" : "+ Crear nueva"}
+                    </button>
+                  </div>
+
+                  {creatingBrand ? (
+                    <input
+                      type="text"
+                      value={newBrandName}
+                      onChange={(e) => setNewBrandName(e.target.value)}
+                      placeholder="Nombre de nueva marca..."
+                      className="w-full rounded-xl border border-[#D85C8A]/60 bg-white px-3 py-2 text-sm focus:border-[#D85C8A] focus:outline-none"
+                    />
+                  ) : (
+                    <select
+                      value={productForm.brand_id}
+                      onChange={(e) => {
+                        if (e.target.value === "__new__") {
+                          setCreatingBrand(true);
+                          setNewBrandName("");
+                        } else {
+                          setProductForm((prev) => ({
+                            ...prev,
+                            brand_id: e.target.value,
+                          }));
+                        }
+                      }}
+                      className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3 py-2 text-sm focus:border-[#D85C8A] focus:outline-none"
+                    >
+                      <option value="">Sin marca</option>
+                      {brands.map((brand) => (
+                        <option key={brand.id} value={brand.id}>
+                          {brand.name}
+                        </option>
+                      ))}
+                      <option value="__new__">+ Crear nueva marca...</option>
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -757,7 +969,7 @@ export function ProductsTab({
                       slug: slugify(e.target.value),
                     }))
                   }
-                  placeholder="gloss-hidratante-zoe"
+                  placeholder="gloss-ultra-shine-bloomshell"
                   className="w-full rounded-xl border border-[#FAD4E4] px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
                 />
               </div>
@@ -822,59 +1034,105 @@ export function ProductsTab({
                 />
               </div>
 
-              {/* Imagen del producto */}
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[#2D2226]/80">
-                  Imagen principal (bucket product-images)
-                </label>
-                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-                  <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#FAD4E4] bg-[#FFF1F5] px-3.5 py-2.5 text-xs font-semibold text-[#B94470] hover:bg-[#FAD4E4]/60">
+              {/* Galería de fotos del producto */}
+              <div className="rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/30 p-3.5">
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[#2D2226]/85">
+                    Fotos del producto ({productForm.image_urls.length})
+                  </label>
+                  <span className="text-[11px] text-[#2D2226]/55">
+                    La primera foto será la portada
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <label className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2 text-xs font-semibold text-[#B94470] shadow-2xs hover:bg-[#FAD4E4]/40">
                     {uploadingProductImg ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Upload className="h-4 w-4" />
                     )}
-                    {uploadingProductImg ? "Subiendo..." : "Subir foto"}
+                    {uploadingProductImg ? "Subiendo..." : "Subir fotos"}
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={handleUploadProductPhoto}
+                      multiple
+                      onChange={handleUploadProductPhotos}
                       disabled={uploadingProductImg}
                       className="hidden"
                     />
                   </label>
-                  <input
-                    type="url"
-                    value={productForm.image_url}
-                    onChange={(e) =>
-                      setProductForm((prev) => ({
-                        ...prev,
-                        image_url: e.target.value,
-                      }))
-                    }
-                    placeholder="O pega una URL de imagen..."
-                    className="flex-1 rounded-xl border border-[#FAD4E4] px-3.5 py-2.5 text-xs focus:border-[#D85C8A] focus:outline-none"
-                  />
-                </div>
-                {productForm.image_url && (
-                  <div className="mt-2 flex items-center gap-3">
-                    <Image
-                      src={productForm.image_url}
-                      alt="Vista previa"
-                      width={56}
-                      height={56}
-                      unoptimized
-                      className="h-14 w-14 rounded-xl border border-[#FAD4E4] object-cover"
+
+                  <div className="flex flex-1 gap-1.5">
+                    <input
+                      type="url"
+                      value={photoUrlInput}
+                      onChange={(e) => setPhotoUrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddPhotoUrl();
+                        }
+                      }}
+                      placeholder="O pega una URL de imagen..."
+                      className="min-w-0 flex-1 rounded-xl border border-[#FAD4E4] bg-white px-3 py-2 text-xs focus:border-[#D85C8A] focus:outline-none"
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setProductForm((prev) => ({ ...prev, image_url: "" }))
-                      }
-                      className="cursor-pointer text-xs font-medium text-rose-600 hover:underline"
+                      onClick={handleAddPhotoUrl}
+                      className="shrink-0 cursor-pointer rounded-xl bg-[#FAD4E4]/70 px-3 py-2 text-xs font-semibold text-[#B94470] hover:bg-[#FAD4E4]"
                     >
-                      Quitar imagen
+                      Añadir
                     </button>
+                  </div>
+                </div>
+
+                {productForm.image_urls.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+                    {productForm.image_urls.map((url, idx) => (
+                      <div
+                        key={`${url}-${idx}`}
+                        className={`group relative overflow-hidden rounded-2xl border bg-white p-1 ${
+                          idx === 0
+                            ? "border-[#D85C8A] ring-2 ring-[#D85C8A]/25"
+                            : "border-[#FAD4E4]"
+                        }`}
+                      >
+                        <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#FFF1F5]">
+                          <Image
+                            src={url}
+                            alt={`Foto ${idx + 1}`}
+                            fill
+                            unoptimized
+                            className="object-cover"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(idx)}
+                          title="Quitar foto"
+                          className="absolute right-2 top-2 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-[#2D2226]/75 text-white hover:bg-rose-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+
+                        {idx === 0 ? (
+                          <span className="mt-1 flex items-center justify-center gap-1 rounded-lg bg-[#D85C8A] py-0.5 text-[10px] font-bold text-white">
+                            <Star className="h-2.5 w-2.5 fill-current" />
+                            Portada
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSetCoverPhoto(idx)}
+                            className="mt-1 w-full cursor-pointer rounded-lg bg-[#FFF1F5] py-0.5 text-[10px] font-semibold text-[#B94470] hover:bg-[#FAD4E4]"
+                          >
+                            Usar portada
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

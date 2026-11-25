@@ -88,6 +88,7 @@ export interface Product {
   retail_price: number;
   wholesale_price: number;
   image_url: string | null;
+  image_urls: string[];
   is_active: boolean;
   created_at: string;
   updated_at: string;

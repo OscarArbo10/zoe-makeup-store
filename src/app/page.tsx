@@ -60,6 +60,7 @@ async function getCatalogData(): Promise<{
           retail_price,
           wholesale_price,
           image_url,
+          image_urls,
           is_active,
           created_at,
           updated_at,

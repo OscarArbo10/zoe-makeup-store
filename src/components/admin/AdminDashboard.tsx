@@ -307,6 +307,8 @@ export function AdminDashboard({
             categories={categories}
             brands={brands}
             onRefresh={refreshProducts}
+            onRefreshCategories={refreshCategories}
+            onRefreshBrands={refreshBrands}
           />
         )}
         {activeTab === "categories" && (
