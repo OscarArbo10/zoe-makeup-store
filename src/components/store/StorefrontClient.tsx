@@ -14,8 +14,8 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   CheckCircle2,
-  ChevronDown,
-  FolderTree,
+  ArrowLeft,
+  ChevronRight,
   LayoutGrid,
   Menu,
   Search,
@@ -104,13 +104,7 @@ export function StorefrontClient({
   products,
 }: StorefrontClientProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [openSection, setOpenSection] = useState<{
-    categories: boolean;
-    brands: boolean;
-  }>({
-    categories: true,
-    brands: true,
-  });
+  const [menuBrandId, setMenuBrandId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [selectedBrandId, setSelectedBrandId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -172,6 +166,37 @@ export function StorefrontClient({
     }
     return { byCategory, byBrand };
   }, [products]);
+
+  // Categorías (tipos de producto) que tiene cada marca, con conteo
+  const brandCategoryCounts = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
+    for (const p of products) {
+      if (!p.brand_id || !p.category_id) continue;
+      const inner = map.get(p.brand_id) ?? new Map<string, number>();
+      inner.set(p.category_id, (inner.get(p.category_id) ?? 0) + 1);
+      map.set(p.brand_id, inner);
+    }
+    return map;
+  }, [products]);
+
+  const menuBrand = menuBrandId
+    ? brands.find((b) => b.id === menuBrandId) ?? null
+    : null;
+  const menuBrandCategories = menuBrandId
+    ? categories.filter((c) => brandCategoryCounts.get(menuBrandId)?.has(c.id))
+    : [];
+
+  const featuredProduct = settings.featured_product_id
+    ? products.find((p) => p.id === settings.featured_product_id) ?? null
+    : null;
+  const promoTitle = settings.promo_title?.trim() ?? "";
+  const promoText = settings.promo_text?.trim() ?? "";
+  const hasPromo = Boolean(featuredProduct || promoTitle || promoText);
+  const featuredImage =
+    featuredProduct?.image_urls?.[0] || featuredProduct?.image_url || null;
+  const featuredBrandName = featuredProduct?.brand_id
+    ? brandMap.get(featuredProduct.brand_id)
+    : undefined;
 
   const filteredProducts = useMemo(() => {
     const q = deferredSearchQuery.trim().toLowerCase();
@@ -306,10 +331,19 @@ export function StorefrontClient({
     scrollToCatalog();
   };
 
-  const handleSelectCategory = (categoryId: string) => {
+  const handleSelectBrandCategory = (brandId: string, categoryId: string) => {
+    setSelectedBrandId(brandId);
     setSelectedCategoryId(categoryId);
-    setSelectedBrandId("all");
     setMenuOpen(false);
+    setMenuBrandId(null);
+    scrollToCatalog();
+  };
+
+  const handleViewFeatured = () => {
+    if (!featuredProduct) return;
+    setSelectedBrandId("all");
+    setSelectedCategoryId("all");
+    setSearchQuery(featuredProduct.name);
     scrollToCatalog();
   };
 
@@ -317,15 +351,20 @@ export function StorefrontClient({
     setSelectedBrandId(brandId);
     setSelectedCategoryId("all");
     setMenuOpen(false);
+    setMenuBrandId(null);
     scrollToCatalog();
   };
 
-  const activeFilterLabel =
-    selectedCategoryId !== "all"
-      ? `Categoría: ${categoryMap.get(selectedCategoryId) ?? ""}`
-      : selectedBrandId !== "all"
-      ? `Marca: ${brandMap.get(selectedBrandId) ?? ""}`
-      : null;
+  const activeFilterLabel = (() => {
+    const parts: string[] = [];
+    if (selectedBrandId !== "all") {
+      parts.push(brandMap.get(selectedBrandId) ?? "");
+    }
+    if (selectedCategoryId !== "all") {
+      parts.push(categoryMap.get(selectedCategoryId) ?? "");
+    }
+    return parts.length > 0 ? parts.filter(Boolean).join(" · ") : null;
+  })();
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-[#2D2226]">
@@ -402,33 +441,43 @@ export function StorefrontClient({
         </div>
       </header>
 
-      {/* Menú lateral izquierdo desplegable con desglose de Categorías y Marcas */}
+      {/* Menú lateral: solo marcas; al elegir una marca se muestran sus categorías */}
       {menuOpen && (
         <div
           className="fixed inset-0 z-50 flex justify-start bg-[#2D2226]/40 backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
-          aria-label="Explorar contenido de la tienda"
+          aria-label="Explorar marcas de la tienda"
         >
           <aside className="flex h-full w-full max-w-xs flex-col bg-white shadow-2xl">
-            {/* Cabecera del menú */}
             <div className="flex items-center justify-between border-b border-[#FAD4E4] bg-[#FFF1F5] px-5 py-4">
               <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 overflow-hidden rounded-xl border border-[#FAD4E4] bg-[#FFA6DA]">
-                  <Image
-                    src="/zoe-logo.jpg"
-                    alt={settings.store_name || "ZOÉ COSMETICS"}
-                    width={36}
-                    height={36}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
+                {menuBrand ? (
+                  <button
+                    type="button"
+                    onClick={() => setMenuBrandId(null)}
+                    aria-label="Volver a marcas"
+                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-[#FAD4E4] bg-white text-[#D85C8A] hover:bg-[#FAD4E4]/50"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <div className="h-9 w-9 overflow-hidden rounded-xl border border-[#FAD4E4] bg-[#FFA6DA]">
+                    <Image
+                      src="/zoe-logo.jpg"
+                      alt={settings.store_name || "ZOÉ COSMETICS"}
+                      width={36}
+                      height={36}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
                 <div>
                   <p className="font-[family-name:var(--font-playfair)] text-base font-bold leading-tight text-[#2D2226]">
-                    {settings.store_name || "ZOÉ COSMETICS"}
+                    {menuBrand ? menuBrand.name : "Marcas"}
                   </p>
                   <p className="text-[11px] text-[#B94470]">
-                    Explorar catálogo
+                    {menuBrand ? "Elige un tipo de producto" : "Elige una marca"}
                   </p>
                 </div>
               </div>
@@ -442,156 +491,120 @@ export function StorefrontClient({
               </button>
             </div>
 
-            {/* Contenido desglosado */}
             <nav
-              className="flex-1 space-y-4 overflow-y-auto p-4"
-              aria-label="Navegación de categorías y marcas"
+              className="flex-1 space-y-2 overflow-y-auto p-4"
+              aria-label="Navegación de marcas y categorías"
             >
-              {/* Opción: Todo el catálogo */}
-              <button
-                type="button"
-                onClick={handleSelectAll}
-                className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-3.5 py-3 text-left text-sm font-semibold transition-colors ${
-                  selectedCategoryId === "all" && selectedBrandId === "all"
-                    ? "bg-[#D85C8A] text-white shadow-xs"
-                    : "bg-[#FFF1F5]/70 text-[#2D2226] hover:bg-[#FAD4E4]/55"
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <LayoutGrid className="h-4 w-4" />
-                  Ver todo el catálogo
-                </span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                    selectedCategoryId === "all" && selectedBrandId === "all"
-                      ? "bg-white/25 text-white"
-                      : "bg-white text-[#B94470]"
-                  }`}
-                >
-                  {products.length}
-                </span>
-              </button>
-
-              {/* Desglose: Categorías */}
-              <div className="overflow-hidden rounded-2xl border border-[#FAD4E4]/80 bg-white">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenSection((prev) => ({
-                      ...prev,
-                      categories: !prev.categories,
-                    }))
-                  }
-                  aria-expanded={openSection.categories}
-                  className="flex w-full cursor-pointer items-center justify-between bg-[#FFF1F5]/65 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[#B94470] hover:bg-[#FFF1F5]"
-                >
-                  <span className="flex items-center gap-2">
-                    <FolderTree className="h-4 w-4 text-[#D85C8A]" />
-                    Categorías
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      openSection.categories ? "rotate-180" : ""
+              {!menuBrand ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-3.5 py-3 text-left text-sm font-semibold transition-colors ${
+                      selectedCategoryId === "all" && selectedBrandId === "all"
+                        ? "bg-[#D85C8A] text-white shadow-xs"
+                        : "bg-[#FFF1F5]/70 text-[#2D2226] hover:bg-[#FAD4E4]/55"
                     }`}
-                  />
-                </button>
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <LayoutGrid className="h-4 w-4" />
+                      Ver todo el catálogo
+                    </span>
+                    <span className="rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold">
+                      {products.length}
+                    </span>
+                  </button>
 
-                {openSection.categories && (
-                  <ul className="divide-y divide-[#FAD4E4]/40 p-2">
-                    {categories.map((category) => {
-                      const active = selectedCategoryId === category.id;
-                      const count =
-                        productCounts.byCategory.get(category.id) ?? 0;
-                      return (
-                        <li key={category.id}>
-                          <button
-                            type="button"
-                            onClick={() => handleSelectCategory(category.id)}
-                            className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
-                              active
-                                ? "bg-[#D85C8A] font-semibold text-white"
-                                : "font-medium text-[#2D2226] hover:bg-[#FFF1F5]"
-                            }`}
-                          >
-                            <span>{category.name}</span>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                active
-                                  ? "bg-white/20 text-white"
-                                  : "bg-[#FFF1F5] text-[#B94470]"
-                              }`}
-                            >
-                              {count}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-
-              {/* Desglose: Marcas */}
-              <div className="overflow-hidden rounded-2xl border border-[#FAD4E4]/80 bg-white">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenSection((prev) => ({
-                      ...prev,
-                      brands: !prev.brands,
-                    }))
-                  }
-                  aria-expanded={openSection.brands}
-                  className="flex w-full cursor-pointer items-center justify-between bg-[#FFF1F5]/65 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[#B94470] hover:bg-[#FFF1F5]"
-                >
-                  <span className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-[#D85C8A]" />
-                    Marcas
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      openSection.brands ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {openSection.brands && (
-                  <ul className="divide-y divide-[#FAD4E4]/40 p-2">
+                  <ul className="space-y-1.5 pt-1">
                     {brands.map((brand) => {
-                      const active = selectedBrandId === brand.id;
                       const count = productCounts.byBrand.get(brand.id) ?? 0;
+                      const active = selectedBrandId === brand.id;
                       return (
                         <li key={brand.id}>
                           <button
                             type="button"
-                            onClick={() => handleSelectBrand(brand.id)}
-                            className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                            onClick={() => setMenuBrandId(brand.id)}
+                            className={`flex w-full cursor-pointer items-center justify-between rounded-2xl border px-3.5 py-3 text-left text-sm font-semibold transition-colors ${
                               active
-                                ? "bg-[#D85C8A] font-semibold text-white"
-                                : "font-medium text-[#2D2226] hover:bg-[#FFF1F5]"
+                                ? "border-[#D85C8A] bg-[#FFF1F5] text-[#B94470]"
+                                : "border-[#FAD4E4]/70 bg-white text-[#2D2226] hover:bg-[#FFF1F5]"
                             }`}
                           >
-                            <span>{brand.name}</span>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                active
-                                  ? "bg-white/20 text-white"
-                                  : "bg-[#FFF1F5] text-[#B94470]"
-                              }`}
-                            >
-                              {count}
+                            <span className="flex items-center gap-2.5">
+                              <Tag className="h-4 w-4 text-[#D85C8A]" />
+                              {brand.name}
+                            </span>
+                            <span className="flex items-center gap-2 text-[#B94470]">
+                              <span className="rounded-full bg-[#FFF1F5] px-2 py-0.5 text-[11px] font-semibold">
+                                {count}
+                              </span>
+                              <ChevronRight className="h-4 w-4" />
                             </span>
                           </button>
                         </li>
                       );
                     })}
                   </ul>
-                )}
-              </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectBrand(menuBrand.id)}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-2xl bg-[#D85C8A] px-3.5 py-3 text-left text-sm font-semibold text-white shadow-xs hover:bg-[#B94470]"
+                  >
+                    <span>Todos los productos de {menuBrand.name}</span>
+                    <span className="rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold">
+                      {productCounts.byBrand.get(menuBrand.id) ?? 0}
+                    </span>
+                  </button>
+
+                  {menuBrandCategories.length === 0 ? (
+                    <p className="px-1 pt-2 text-xs text-[#2D2226]/60">
+                      Esta marca aún no tiene productos clasificados por
+                      categoría.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5 pt-1">
+                      {menuBrandCategories.map((category) => {
+                        const count =
+                          brandCategoryCounts
+                            .get(menuBrand.id)
+                            ?.get(category.id) ?? 0;
+                        const active =
+                          selectedBrandId === menuBrand.id &&
+                          selectedCategoryId === category.id;
+                        return (
+                          <li key={category.id}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSelectBrandCategory(
+                                  menuBrand.id,
+                                  category.id
+                                )
+                              }
+                              className={`flex w-full cursor-pointer items-center justify-between rounded-2xl border px-3.5 py-3 text-left text-sm font-medium transition-colors ${
+                                active
+                                  ? "border-[#D85C8A] bg-[#FFF1F5] font-semibold text-[#B94470]"
+                                  : "border-[#FAD4E4]/70 bg-white text-[#2D2226] hover:bg-[#FFF1F5]"
+                              }`}
+                            >
+                              <span>{category.name}</span>
+                              <span className="rounded-full bg-[#FFF1F5] px-2 py-0.5 text-[11px] font-semibold text-[#B94470]">
+                                {count}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </>
+              )}
             </nav>
           </aside>
 
-          {/* Área clicable para cerrar */}
           <div
             className="flex-1"
             onClick={() => setMenuOpen(false)}
@@ -600,14 +613,15 @@ export function StorefrontClient({
         </div>
       )}
 
-      {/* Hero femenino pastel con logo destacado y objetos dinámicos */}
+      {/* Hero: logo + espacio para producto destacado o promoción (se elige desde el admin) */}
       <section className="relative overflow-hidden border-b border-[#FAD4E4]/60 bg-gradient-to-b from-[#FFF1F5] via-[#FFF8FA] to-white">
         <DynamicHeroDecor />
 
-        <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            {/* Medallón animado del logo Zoe */}
-            <div className="relative mx-auto mb-6 flex w-fit items-center justify-center">
+        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+          <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
+            <h1 className="sr-only">{settings.store_name || "ZOÉ COSMETICS"}</h1>
+
+            <div className="relative mx-auto flex w-fit items-center justify-center">
               <div className="animate-zoe-orbit-pulse absolute -inset-3 rounded-[2.2rem] bg-gradient-to-tr from-[#FAD4E4] via-[#FFAED4]/50 to-[#FFF1F5] blur-xl" />
               <div className="animate-zoe-float relative h-28 w-28 overflow-hidden rounded-[2rem] border-4 border-white bg-[#FFA6DA] shadow-[0_16px_40px_rgba(216,92,138,0.25)] sm:h-32 sm:w-32">
                 <Image
@@ -621,27 +635,73 @@ export function StorefrontClient({
               </div>
             </div>
 
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#FAD4E4] bg-white/90 px-3.5 py-1 text-xs font-semibold text-[#B94470] shadow-xs backdrop-blur-xs">
-              <Tag className="h-3.5 w-3.5" />
-              Detal y Mayorista en un solo carrito
-            </span>
+            {hasPromo && (
+              <div className="mt-8 w-full overflow-hidden rounded-3xl border border-[#FAD4E4] bg-white/90 text-left shadow-[0_14px_40px_rgba(216,92,138,0.14)] backdrop-blur-xs">
+                <div className="flex flex-col sm:flex-row">
+                  {featuredImage && (
+                    <div className="relative aspect-square w-full shrink-0 bg-[#FFF1F5] sm:w-52">
+                      <Image
+                        src={featuredImage}
+                        alt={featuredProduct?.name ?? "Producto destacado"}
+                        fill
+                        sizes="(max-width: 640px) 100vw, 208px"
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
 
-            <h1 className="mt-4 font-[family-name:var(--font-playfair)] text-4xl font-bold tracking-tight text-[#2D2226] sm:text-5xl">
-              Maquillaje pensado para{" "}
-              <span className="text-[#D85C8A]">resaltar tu brillo</span>
-            </h1>
+                  <div className="flex flex-1 flex-col justify-center gap-2 p-5">
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#D85C8A] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
+                      <Sparkles className="h-3 w-3" />
+                      {promoTitle || "Producto destacado"}
+                    </span>
 
-            <p className="mt-4 text-sm leading-relaxed text-[#2D2226]/70 sm:text-base">
-              Elige tus productos y tonos favoritos. Si tu carrito alcanza{" "}
-              <strong className="font-semibold text-[#2D2226]">
-                {formatCOP(wholesaleThreshold)}
-              </strong>{" "}
-              en precio al por mayor, todo tu pedido cambia automáticamente a{" "}
-              <strong className="font-semibold text-[#D85C8A]">
-                tarifa mayorista
-              </strong>
-              .
-            </p>
+                    {featuredProduct && (
+                      <div>
+                        {featuredBrandName && (
+                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#B94470]">
+                            {featuredBrandName}
+                          </p>
+                        )}
+                        <h2 className="font-[family-name:var(--font-playfair)] text-xl font-bold leading-snug text-[#2D2226] sm:text-2xl">
+                          {featuredProduct.name}
+                        </h2>
+                      </div>
+                    )}
+
+                    {promoText && (
+                      <p className="text-sm leading-relaxed text-[#2D2226]/75">
+                        {promoText}
+                      </p>
+                    )}
+
+                    {featuredProduct && (
+                      <div className="mt-1 flex flex-wrap items-center gap-3">
+                        <span className="text-sm text-[#2D2226]/60">
+                          Detal{" "}
+                          <strong className="text-[#2D2226]">
+                            {formatCOP(featuredProduct.retail_price)}
+                          </strong>
+                        </span>
+                        <span className="text-sm text-[#B94470]">
+                          Mayor{" "}
+                          <strong>
+                            {formatCOP(featuredProduct.wholesale_price)}
+                          </strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleViewFeatured}
+                          className="cursor-pointer rounded-xl bg-[#D85C8A] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#B94470]"
+                        >
+                          Ver en el catálogo
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

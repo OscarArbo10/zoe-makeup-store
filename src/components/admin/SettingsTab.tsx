@@ -2,17 +2,27 @@
 
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
-import type { StoreSettings } from "@/types/database";
+import type { ProductWithVariants, StoreSettings } from "@/types/database";
 import { formatCOP, sanitizePhoneForWhatsApp } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { revalidateCatalog } from "@/app/admin/actions";
 
 interface SettingsTabProps {
   settings: StoreSettings;
+  products: ProductWithVariants[];
   onRefresh: () => Promise<void>;
 }
 
-export function SettingsTab({ settings, onRefresh }: SettingsTabProps) {
+export function SettingsTab({
+  settings,
+  products,
+  onRefresh,
+}: SettingsTabProps) {
+  const [featuredProductId, setFeaturedProductId] = useState(
+    settings.featured_product_id ?? ""
+  );
+  const [promoTitle, setPromoTitle] = useState(settings.promo_title ?? "");
+  const [promoText, setPromoText] = useState(settings.promo_text ?? "");
   const [storeName, setStoreName] = useState(
     settings.store_name || "ZOÉ COSMETICS"
   );
@@ -51,6 +61,9 @@ export function SettingsTab({ settings, onRefresh }: SettingsTabProps) {
           store_name: storeName.trim() || "ZOÉ COSMETICS",
           wholesale_threshold: thresholdValue,
           whatsapp_number: cleanWhatsApp,
+          featured_product_id: featuredProductId || null,
+          promo_title: promoTitle.trim() || null,
+          promo_text: promoText.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", 1);
@@ -155,6 +168,63 @@ export function SettingsTab({ settings, onRefresh }: SettingsTabProps) {
             Ejemplo Colombia: <code>573001234567</code>. Se usará en{" "}
             <code>https://wa.me/{sanitizePhoneForWhatsApp(whatsappNumber) || "..."}</code>.
           </p>
+        </div>
+
+        <div className="space-y-4 rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/40 p-4">
+          <div>
+            <p className="text-sm font-bold text-[#2D2226]">
+              Producto destacado / promoción del inicio
+            </p>
+            <p className="text-xs text-[#2D2226]/60">
+              Se muestra en el espacio del hero de la tienda, bajo el logo.
+              Déjalo vacío para ocultarlo.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[#2D2226]/80">
+              Producto destacado
+            </label>
+            <select
+              value={featuredProductId}
+              onChange={(e) => setFeaturedProductId(e.target.value)}
+              className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
+            >
+              <option value="">Ninguno</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.is_active ? "" : " (oculto)"}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[#2D2226]/80">
+              Título de la promoción (opcional)
+            </label>
+            <input
+              type="text"
+              value={promoTitle}
+              onChange={(e) => setPromoTitle(e.target.value)}
+              placeholder="Ej. ¡Oferta de la semana!"
+              className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm focus:border-[#D85C8A] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-[#2D2226]/80">
+              Texto de la promoción (opcional)
+            </label>
+            <textarea
+              rows={2}
+              value={promoText}
+              onChange={(e) => setPromoText(e.target.value)}
+              placeholder="Ej. Lleva 3 y paga 2 en labiales Bloomshell."
+              className="w-full resize-none rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2 text-sm focus:border-[#D85C8A] focus:outline-none"
+            />
+          </div>
         </div>
 
         <button

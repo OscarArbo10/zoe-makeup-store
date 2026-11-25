@@ -13,6 +13,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   store_name: "ZOÉ COSMETICS",
   wholesale_threshold: 100000,
   whatsapp_number: "573007117844",
+  featured_product_id: null,
+  promo_title: null,
+  promo_text: null,
   updated_at: "2026-01-01T00:00:00.000Z",
 };
 
@@ -33,7 +36,7 @@ async function getCatalogData(): Promise<{
       supabase
         .from("store_settings")
         .select(
-          "id, store_name, wholesale_threshold, whatsapp_number, updated_at"
+          "id, store_name, wholesale_threshold, whatsapp_number, featured_product_id, promo_title, promo_text, updated_at"
         )
         .eq("id", 1)
         .maybeSingle(),

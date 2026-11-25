@@ -328,7 +328,11 @@ export function AdminDashboard({
           />
         )}
         {activeTab === "settings" && (
-          <SettingsTab settings={settings} onRefresh={refreshSettings} />
+          <SettingsTab
+            settings={settings}
+            products={products}
+            onRefresh={refreshSettings}
+          />
         )}
       </main>
     </div>

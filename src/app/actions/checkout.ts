@@ -13,7 +13,10 @@ export interface CheckoutItemInput {
 export interface SubmitOrderInput {
   customerName: string;
   customerPhone: string;
-  customerCity?: string;
+  customerDocument: string;
+  customerCity: string;
+  customerAddress: string;
+  customerNeighborhood: string;
   notes?: string;
   items: CheckoutItemInput[];
 }
@@ -64,12 +67,23 @@ export async function submitOrder(
     const trimmedName = input.customerName?.trim() ?? "";
     const trimmedPhone = input.customerPhone?.trim() ?? "";
     const trimmedCity = input.customerCity?.trim() ?? "";
+    const trimmedDocument = input.customerDocument?.trim() ?? "";
+    const trimmedAddress = input.customerAddress?.trim() ?? "";
+    const trimmedNeighborhood = input.customerNeighborhood?.trim() ?? "";
     const trimmedNotes = input.notes?.trim() ?? "";
 
-    if (!trimmedName || !trimmedPhone) {
+    if (
+      !trimmedName ||
+      !trimmedDocument ||
+      !trimmedPhone ||
+      !trimmedCity ||
+      !trimmedAddress ||
+      !trimmedNeighborhood
+    ) {
       return {
         ok: false,
-        error: "Por favor ingresa tu nombre y tu número de WhatsApp.",
+        error:
+          "Completa nombre, cédula, celular/WhatsApp, ciudad, dirección y barrio.",
       };
     }
 
@@ -226,6 +240,9 @@ export async function submitOrder(
         customer_name: trimmedName,
         customer_phone: trimmedPhone,
         customer_city: trimmedCity || null,
+        customer_document: trimmedDocument,
+        customer_address: trimmedAddress,
+        customer_neighborhood: trimmedNeighborhood,
         notes: trimmedNotes || null,
         applied_wholesale: appliedWholesale,
         retail_subtotal: retailSubtotal,
@@ -243,6 +260,9 @@ export async function submitOrder(
           customer_name: trimmedName,
           customer_phone: trimmedPhone,
           customer_city: trimmedCity || null,
+        customer_document: trimmedDocument,
+        customer_address: trimmedAddress,
+        customer_neighborhood: trimmedNeighborhood,
           notes: trimmedNotes || null,
           applied_wholesale: appliedWholesale,
           retail_subtotal: retailSubtotal,
@@ -285,7 +305,10 @@ export async function submitOrder(
       orderNumber,
       customerName: trimmedName,
       customerPhone: trimmedPhone,
+      customerDocument: trimmedDocument,
       customerCity: trimmedCity,
+      customerAddress: trimmedAddress,
+      customerNeighborhood: trimmedNeighborhood,
       notes: trimmedNotes,
       appliedWholesale,
       retailSubtotal,

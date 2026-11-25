@@ -48,6 +48,9 @@ export interface StoreSettings {
   store_name: string;
   wholesale_threshold: number;
   whatsapp_number: string;
+  featured_product_id: string | null;
+  promo_title: string | null;
+  promo_text: string | null;
   updated_at: string;
 }
 
@@ -118,6 +121,9 @@ export interface Order {
   customer_name: string;
   customer_phone: string;
   customer_city: string | null;
+  customer_document: string | null;
+  customer_address: string | null;
+  customer_neighborhood: string | null;
   notes: string | null;
   applied_wholesale: boolean;
   retail_subtotal: number;

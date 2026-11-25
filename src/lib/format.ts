@@ -47,7 +47,10 @@ export interface WhatsAppOrderMessageParams {
   orderNumber: number;
   customerName: string;
   customerPhone: string;
+  customerDocument?: string;
   customerCity?: string;
+  customerAddress?: string;
+  customerNeighborhood?: string;
   notes?: string;
   appliedWholesale: boolean;
   retailSubtotal: number;
@@ -69,11 +72,18 @@ export function buildWhatsAppOrderUrl(
     ``,
     `*Pedido #${params.orderNumber}*`,
     `*Cliente:* ${params.customerName}`,
-    `*Teléfono:* ${params.customerPhone}`,
+    `*Cédula:* ${params.customerDocument?.trim() ?? ""}`,
+    `*Celular/WhatsApp:* ${params.customerPhone}`,
   ];
 
   if (params.customerCity?.trim()) {
     lines.push(`*Ciudad:* ${params.customerCity.trim()}`);
+  }
+  if (params.customerAddress?.trim()) {
+    lines.push(`*Dirección:* ${params.customerAddress.trim()}`);
+  }
+  if (params.customerNeighborhood?.trim()) {
+    lines.push(`*Barrio:* ${params.customerNeighborhood.trim()}`);
   }
 
   lines.push(

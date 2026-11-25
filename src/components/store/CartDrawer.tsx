@@ -18,6 +18,10 @@ import type { CartItem, StoreSettings } from "@/types/database";
 import { formatCOP } from "@/lib/format";
 import { submitOrder } from "@/app/actions/checkout";
 
+const INPUT_CLASS =
+  "w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm text-[#2D2226] placeholder:text-[#2D2226]/35 focus:border-[#D85C8A] focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20";
+const LABEL_CLASS = "mb-1 block text-xs font-medium text-[#2D2226]/80";
+
 interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -47,7 +51,10 @@ export function CartDrawer({
 }: CartDrawerProps) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerDocument, setCustomerDocument] = useState("");
   const [customerCity, setCustomerCity] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerNeighborhood, setCustomerNeighborhood] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -90,8 +97,17 @@ export function CartDrawer({
     const trimmedName = customerName.trim();
     const trimmedPhone = customerPhone.trim();
 
-    if (!trimmedName || !trimmedPhone) {
-      setErrorMsg("Por favor ingresa tu nombre y tu número de WhatsApp.");
+    if (
+      !trimmedName ||
+      !trimmedPhone ||
+      !customerDocument.trim() ||
+      !customerCity.trim() ||
+      !customerAddress.trim() ||
+      !customerNeighborhood.trim()
+    ) {
+      setErrorMsg(
+        "Completa nombre, cédula, celular/WhatsApp, ciudad, dirección y barrio."
+      );
       return;
     }
 
@@ -101,7 +117,10 @@ export function CartDrawer({
       const result = await submitOrder({
         customerName: trimmedName,
         customerPhone: trimmedPhone,
+        customerDocument: customerDocument.trim(),
         customerCity: customerCity.trim(),
+        customerAddress: customerAddress.trim(),
+        customerNeighborhood: customerNeighborhood.trim(),
         notes: notes.trim(),
         items: items.map((item) => ({
           productId: item.productId,
@@ -129,7 +148,10 @@ export function CartDrawer({
       onClearCart();
       setCustomerName("");
       setCustomerPhone("");
+      setCustomerDocument("");
       setCustomerCity("");
+      setCustomerAddress("");
+      setCustomerNeighborhood("");
       setNotes("");
     } catch (err) {
       const msg =
@@ -450,57 +472,90 @@ export function CartDrawer({
                 </p>
 
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-[#2D2226]/80">
-                    Nombre completo *
-                  </label>
+                  <label className={LABEL_CLASS}>Nombre completo *</label>
                   <input
                     type="text"
                     required
+                    autoComplete="name"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="Ej. María Fernanda López"
-                    className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm text-[#2D2226] placeholder:text-[#2D2226]/35 focus:border-[#D85C8A] focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
+                    className={INPUT_CLASS}
                   />
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[#2D2226]/80">
-                      Teléfono / WhatsApp *
-                    </label>
+                    <label className={LABEL_CLASS}>Cédula *</label>
                     <input
-                      type="tel"
+                      type="text"
+                      inputMode="numeric"
                       required
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="Ej. 300 123 4567"
-                      className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm text-[#2D2226] placeholder:text-[#2D2226]/35 focus:border-[#D85C8A] focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
+                      value={customerDocument}
+                      onChange={(e) => setCustomerDocument(e.target.value)}
+                      placeholder="Ej. 1234567890"
+                      className={INPUT_CLASS}
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-[#2D2226]/80">
-                      Ciudad (opcional)
-                    </label>
+                    <label className={LABEL_CLASS}>Celular / WhatsApp *</label>
                     <input
-                      type="text"
-                      value={customerCity}
-                      onChange={(e) => setCustomerCity(e.target.value)}
-                      placeholder="Ej. Medellín"
-                      className="w-full rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2.5 text-sm text-[#2D2226] placeholder:text-[#2D2226]/35 focus:border-[#D85C8A] focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
+                      type="tel"
+                      required
+                      autoComplete="tel"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="Ej. 300 123 4567"
+                      className={INPUT_CLASS}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-[#2D2226]/80">
-                    Notas (opcional)
-                  </label>
+                  <label className={LABEL_CLASS}>Ciudad *</label>
+                  <input
+                    type="text"
+                    required
+                    value={customerCity}
+                    onChange={(e) => setCustomerCity(e.target.value)}
+                    placeholder="Ej. Cali"
+                    className={INPUT_CLASS}
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL_CLASS}>Dirección *</label>
+                  <input
+                    type="text"
+                    required
+                    autoComplete="street-address"
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    placeholder="Ej. Calle 5 # 38-20, Apto 301"
+                    className={INPUT_CLASS}
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL_CLASS}>Barrio *</label>
+                  <input
+                    type="text"
+                    required
+                    value={customerNeighborhood}
+                    onChange={(e) => setCustomerNeighborhood(e.target.value)}
+                    placeholder="Ej. San Fernando"
+                    className={INPUT_CLASS}
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL_CLASS}>Nota (opcional)</label>
                   <textarea
                     rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Dirección, indicaciones de envío o comentarios..."
-                    className="w-full resize-none rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2 text-sm text-[#2D2226] placeholder:text-[#2D2226]/35 focus:border-[#D85C8A] focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
+                    placeholder="Indicaciones de entrega o comentarios..."
+                    className={`${INPUT_CLASS} resize-none`}
                   />
                 </div>
               </div>

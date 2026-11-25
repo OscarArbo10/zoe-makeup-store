@@ -182,7 +182,16 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
                       {order.customer_city && (
                         <span className="inline-flex items-center gap-1">
                           <MapPin className="h-3 w-3 text-[#D85C8A]" />
-                          {order.customer_city}
+                          {[
+                            order.customer_document
+                              ? `CC ${order.customer_document}`
+                              : null,
+                            order.customer_city,
+                            order.customer_neighborhood,
+                            order.customer_address,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1">
