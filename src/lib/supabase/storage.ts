@@ -1,14 +1,31 @@
 import { createClient } from "./client";
 
 const BUCKET_NAME = "product-images";
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+const ALLOWED_MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/avif": "avif",
+};
 
 export async function uploadProductImage(
   file: File,
   folder: "products" | "shades" = "products"
 ): Promise<string> {
+  const safeExt = ALLOWED_MIME_TO_EXT[file.type];
+  if (!safeExt) {
+    throw new Error(
+      "Formato de imagen no permitido. Usa JPG, PNG, WebP o AVIF."
+    );
+  }
+
+  if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
+    throw new Error("La imagen no puede superar los 5 MB.");
+  }
+
   const supabase = createClient();
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const safeExt = ext.replace(/[^a-z0-9]/g, "") || "jpg";
   const fileName = `${folder}/${Date.now()}-${Math.random()
     .toString(36)
     .slice(2, 9)}.${safeExt}`;
@@ -17,6 +34,7 @@ export async function uploadProductImage(
     .from(BUCKET_NAME)
     .upload(fileName, file, {
       cacheControl: "31536000",
+      contentType: file.type,
       upsert: false,
     });
 
