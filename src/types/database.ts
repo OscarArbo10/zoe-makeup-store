@@ -1,4 +1,4 @@
-export type DeliveryMethod = "domicilio" | "recogida_en_tienda";
+export type DeliveryMethod = "envio" | "domicilio" | "recogida_en_tienda";
 
 export type OrderStatus =
   | "pendiente"

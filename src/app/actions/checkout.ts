@@ -14,7 +14,10 @@ export interface SubmitOrderInput {
   customerName: string;
   customerPhone: string;
   deliveryMethod: DeliveryMethod;
+  customerDocument?: string;
+  customerCity?: string;
   customerAddress?: string;
+  customerNeighborhood?: string;
   items: CheckoutItemInput[];
 }
 
@@ -44,18 +47,38 @@ interface RpcOrderResponse {
   items: CartItem[];
 }
 
+const VALID_DELIVERY_METHODS: ReadonlySet<DeliveryMethod> = new Set([
+  "envio",
+  "domicilio",
+  "recogida_en_tienda",
+]);
+
 export async function submitOrder(
   input: SubmitOrderInput
 ): Promise<SubmitOrderResult | SubmitOrderError> {
   try {
+    if (!VALID_DELIVERY_METHODS.has(input.deliveryMethod)) {
+      return {
+        ok: false,
+        error: "Por favor selecciona un tipo de entrega válido.",
+      };
+    }
+
+    const deliveryMethod = input.deliveryMethod;
     const trimmedName = input.customerName?.trim() ?? "";
     const trimmedPhone = input.customerPhone?.trim() ?? "";
-    const deliveryMethod: DeliveryMethod =
-      input.deliveryMethod === "recogida_en_tienda"
-        ? "recogida_en_tienda"
-        : "domicilio";
+    const trimmedDocument =
+      deliveryMethod === "envio" ? input.customerDocument?.trim() ?? "" : "";
+    const trimmedCity =
+      deliveryMethod === "envio" ? input.customerCity?.trim() ?? "" : "";
     const trimmedAddress =
-      deliveryMethod === "domicilio" ? input.customerAddress?.trim() ?? "" : "";
+      deliveryMethod === "envio" || deliveryMethod === "domicilio"
+        ? input.customerAddress?.trim() ?? ""
+        : "";
+    const trimmedNeighborhood =
+      deliveryMethod === "envio" || deliveryMethod === "domicilio"
+        ? input.customerNeighborhood?.trim() ?? ""
+        : "";
 
     if (!trimmedName || !trimmedPhone) {
       return {
@@ -64,17 +87,37 @@ export async function submitOrder(
       };
     }
 
-    if (deliveryMethod === "domicilio" && !trimmedAddress) {
+    if (
+      deliveryMethod === "envio" &&
+      (!trimmedDocument ||
+        !trimmedCity ||
+        !trimmedAddress ||
+        !trimmedNeighborhood)
+    ) {
       return {
         ok: false,
-        error: "Por favor ingresa tu dirección para el envío a domicilio.",
+        error:
+          "Para envío completa cédula, ciudad, dirección y barrio.",
+      };
+    }
+
+    if (
+      deliveryMethod === "domicilio" &&
+      (!trimmedAddress || !trimmedNeighborhood)
+    ) {
+      return {
+        ok: false,
+        error: "Para domicilio completa tu dirección y barrio.",
       };
     }
 
     if (
       trimmedName.length > 120 ||
       trimmedPhone.length > 30 ||
-      trimmedAddress.length > 200
+      trimmedDocument.length > 30 ||
+      trimmedCity.length > 80 ||
+      trimmedAddress.length > 200 ||
+      trimmedNeighborhood.length > 100
     ) {
       return {
         ok: false,
@@ -112,11 +155,14 @@ export async function submitOrder(
 
     const supabase = createPublicClient();
     const { data, error } = await supabase.rpc("create_public_order", {
+      p_items: normalizedItems,
+      p_delivery_method: deliveryMethod,
       p_customer_name: trimmedName,
       p_customer_phone: trimmedPhone,
-      p_delivery_method: deliveryMethod,
+      p_customer_document: trimmedDocument,
+      p_customer_city: trimmedCity,
       p_customer_address: trimmedAddress,
-      p_items: normalizedItems,
+      p_customer_neighborhood: trimmedNeighborhood,
     });
 
     if (error || !data) {
@@ -135,7 +181,10 @@ export async function submitOrder(
       customerName: trimmedName,
       customerPhone: trimmedPhone,
       deliveryMethod,
+      customerDocument: trimmedDocument,
+      customerCity: trimmedCity,
       customerAddress: trimmedAddress,
+      customerNeighborhood: trimmedNeighborhood,
       appliedWholesale: orderData.applied_wholesale,
       retailSubtotal: orderData.retail_subtotal,
       totalAmount: orderData.total_amount,

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Loader2,
+  MapPin,
   MessageCircle,
   Minus,
   Plus,
@@ -55,7 +56,10 @@ export function CartDrawer({
   const [customerPhone, setCustomerPhone] = useState("");
   const [deliveryMethod, setDeliveryMethod] =
     useState<DeliveryMethod>("domicilio");
+  const [customerDocument, setCustomerDocument] = useState("");
+  const [customerCity, setCustomerCity] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
+  const [customerNeighborhood, setCustomerNeighborhood] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [completedOrder, setCompletedOrder] =
@@ -96,15 +100,34 @@ export function CartDrawer({
 
     const trimmedName = customerName.trim();
     const trimmedPhone = customerPhone.trim();
+    const trimmedDocument = customerDocument.trim();
+    const trimmedCity = customerCity.trim();
     const trimmedAddress = customerAddress.trim();
+    const trimmedNeighborhood = customerNeighborhood.trim();
 
     if (!trimmedName || !trimmedPhone) {
       setErrorMsg("Por favor ingresa tu nombre completo y número de celular.");
       return;
     }
 
-    if (deliveryMethod === "domicilio" && !trimmedAddress) {
-      setErrorMsg("Por favor ingresa tu dirección para el envío a domicilio.");
+    if (
+      deliveryMethod === "envio" &&
+      (!trimmedDocument ||
+        !trimmedCity ||
+        !trimmedAddress ||
+        !trimmedNeighborhood)
+    ) {
+      setErrorMsg(
+        "Para envío completa cédula, ciudad, dirección y barrio."
+      );
+      return;
+    }
+
+    if (
+      deliveryMethod === "domicilio" &&
+      (!trimmedAddress || !trimmedNeighborhood)
+    ) {
+      setErrorMsg("Para domicilio completa tu dirección y barrio.");
       return;
     }
 
@@ -115,7 +138,16 @@ export function CartDrawer({
         customerName: trimmedName,
         customerPhone: trimmedPhone,
         deliveryMethod,
-        customerAddress: deliveryMethod === "domicilio" ? trimmedAddress : "",
+        customerDocument: deliveryMethod === "envio" ? trimmedDocument : "",
+        customerCity: deliveryMethod === "envio" ? trimmedCity : "",
+        customerAddress:
+          deliveryMethod === "envio" || deliveryMethod === "domicilio"
+            ? trimmedAddress
+            : "",
+        customerNeighborhood:
+          deliveryMethod === "envio" || deliveryMethod === "domicilio"
+            ? trimmedNeighborhood
+            : "",
         items: items.map((item) => ({
           productId: item.productId,
           variantId: item.variantId,
@@ -143,7 +175,10 @@ export function CartDrawer({
       setCustomerName("");
       setCustomerPhone("");
       setDeliveryMethod("domicilio");
+      setCustomerDocument("");
+      setCustomerCity("");
       setCustomerAddress("");
+      setCustomerNeighborhood("");
     } catch (err) {
       const msg =
         err instanceof Error
@@ -494,23 +529,35 @@ export function CartDrawer({
 
                 <div>
                   <label className={LABEL_CLASS}>Tipo de entrega *</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => setDeliveryMethod("domicilio")}
-                      className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all ${
-                        deliveryMethod === "domicilio"
+                      onClick={() => setDeliveryMethod("envio")}
+                      className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2.5 text-center text-[11px] font-semibold transition-all ${
+                        deliveryMethod === "envio"
                           ? "border-[#D85C8A] bg-[#D85C8A] text-white shadow-xs"
                           : "border-[#FAD4E4] bg-white text-[#2D2226] hover:bg-[#FFF1F5]"
                       }`}
                     >
                       <Truck className="h-4 w-4 shrink-0" />
+                      Envío
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMethod("domicilio")}
+                      className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2.5 text-center text-[11px] font-semibold transition-all ${
+                        deliveryMethod === "domicilio"
+                          ? "border-[#D85C8A] bg-[#D85C8A] text-white shadow-xs"
+                          : "border-[#FAD4E4] bg-white text-[#2D2226] hover:bg-[#FFF1F5]"
+                      }`}
+                    >
+                      <MapPin className="h-4 w-4 shrink-0" />
                       Domicilio
                     </button>
                     <button
                       type="button"
                       onClick={() => setDeliveryMethod("recogida_en_tienda")}
-                      className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all ${
+                      className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2.5 text-center text-[11px] font-semibold leading-tight transition-all ${
                         deliveryMethod === "recogida_en_tienda"
                           ? "border-[#D85C8A] bg-[#D85C8A] text-white shadow-xs"
                           : "border-[#FAD4E4] bg-white text-[#2D2226] hover:bg-[#FFF1F5]"
@@ -522,21 +569,98 @@ export function CartDrawer({
                   </div>
                 </div>
 
-                {deliveryMethod === "domicilio" ? (
-                  <div>
-                    <label className={LABEL_CLASS}>Dirección *</label>
-                    <input
-                      type="text"
-                      required
-                      maxLength={200}
-                      autoComplete="street-address"
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                      placeholder="Ej. Calle 5 # 38-20, Barrio San Fernando"
-                      className={INPUT_CLASS}
-                    />
-                  </div>
-                ) : (
+                {deliveryMethod === "envio" && (
+                  <>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className={LABEL_CLASS}>Cédula *</label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={30}
+                          value={customerDocument}
+                          onChange={(e) => setCustomerDocument(e.target.value)}
+                          placeholder="Ej. 1144098765"
+                          className={INPUT_CLASS}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={LABEL_CLASS}>Ciudad *</label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={80}
+                          autoComplete="address-level2"
+                          value={customerCity}
+                          onChange={(e) => setCustomerCity(e.target.value)}
+                          placeholder="Ej. Medellín"
+                          className={INPUT_CLASS}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={LABEL_CLASS}>Dirección *</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={200}
+                        autoComplete="street-address"
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                        placeholder="Ej. Calle 5 # 38-20"
+                        className={INPUT_CLASS}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={LABEL_CLASS}>Barrio *</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={100}
+                        value={customerNeighborhood}
+                        onChange={(e) => setCustomerNeighborhood(e.target.value)}
+                        placeholder="Ej. San Fernando"
+                        className={INPUT_CLASS}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {deliveryMethod === "domicilio" && (
+                  <>
+                    <div>
+                      <label className={LABEL_CLASS}>Dirección *</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={200}
+                        autoComplete="street-address"
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                        placeholder="Ej. Calle 5 # 38-20"
+                        className={INPUT_CLASS}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={LABEL_CLASS}>Barrio *</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={100}
+                        value={customerNeighborhood}
+                        onChange={(e) => setCustomerNeighborhood(e.target.value)}
+                        placeholder="Ej. San Fernando"
+                        className={INPUT_CLASS}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {deliveryMethod === "recogida_en_tienda" && (
                   <p className="rounded-xl border border-[#FAD4E4] bg-[#FFF1F5]/70 px-3.5 py-2.5 text-xs font-medium text-[#B94470]">
                     Recogerás tu pedido directamente en tienda.
                   </p>

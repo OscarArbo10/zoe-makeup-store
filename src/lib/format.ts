@@ -48,13 +48,22 @@ export interface WhatsAppOrderMessageParams {
   customerName: string;
   customerPhone: string;
   deliveryMethod: DeliveryMethod;
+  customerDocument?: string;
+  customerCity?: string;
   customerAddress?: string;
+  customerNeighborhood?: string;
   appliedWholesale: boolean;
   retailSubtotal: number;
   totalAmount: number;
   savings: number;
   items: CartItem[];
 }
+
+const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
+  envio: "Envío",
+  domicilio: "Domicilio",
+  recogida_en_tienda: "Recogida en tienda",
+};
 
 /**
  * Construye la URL de WhatsApp con el resumen completo del pedido.
@@ -70,18 +79,29 @@ export function buildWhatsAppOrderUrl(
     `*Pedido #${params.orderNumber}*`,
     `*Cliente:* ${params.customerName}`,
     `*Celular:* ${params.customerPhone}`,
-    `*Entrega:* ${
-      params.deliveryMethod === "recogida_en_tienda"
-        ? "Recogida en tienda"
-        : "Domicilio"
-    }`,
+    `*Entrega:* ${DELIVERY_METHOD_LABELS[params.deliveryMethod]}`,
   ];
 
-  if (
-    params.deliveryMethod === "domicilio" &&
-    params.customerAddress?.trim()
-  ) {
-    lines.push(`*Dirección:* ${params.customerAddress.trim()}`);
+  if (params.deliveryMethod === "envio") {
+    if (params.customerDocument?.trim()) {
+      lines.push(`*Cédula:* ${params.customerDocument.trim()}`);
+    }
+    if (params.customerCity?.trim()) {
+      lines.push(`*Ciudad:* ${params.customerCity.trim()}`);
+    }
+    if (params.customerAddress?.trim()) {
+      lines.push(`*Dirección:* ${params.customerAddress.trim()}`);
+    }
+    if (params.customerNeighborhood?.trim()) {
+      lines.push(`*Barrio:* ${params.customerNeighborhood.trim()}`);
+    }
+  } else if (params.deliveryMethod === "domicilio") {
+    if (params.customerAddress?.trim()) {
+      lines.push(`*Dirección:* ${params.customerAddress.trim()}`);
+    }
+    if (params.customerNeighborhood?.trim()) {
+      lines.push(`*Barrio:* ${params.customerNeighborhood.trim()}`);
+    }
   }
 
   lines.push(

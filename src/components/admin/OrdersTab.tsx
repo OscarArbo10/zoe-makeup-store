@@ -170,7 +170,9 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
                         </span>
                       )}
                       <span className="rounded-full border border-[#FAD4E4] bg-white px-2.5 py-0.5 text-[11px] font-semibold text-[#B94470]">
-                        {order.delivery_method === "recogida_en_tienda"
+                        {order.delivery_method === "envio"
+                          ? "Envío"
+                          : order.delivery_method === "recogida_en_tienda"
                           ? "Recogida en tienda"
                           : "Domicilio"}
                       </span>
@@ -184,7 +186,10 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
                         <Phone className="h-3 w-3 text-[#D85C8A]" />
                         {order.customer_phone}
                       </span>
-                      {(order.customer_address || order.customer_city) && (
+                      {(order.customer_address ||
+                        order.customer_city ||
+                        order.customer_neighborhood ||
+                        order.customer_document) && (
                         <span className="inline-flex items-center gap-1">
                           <MapPin className="h-3 w-3 text-[#D85C8A]" />
                           {[
@@ -192,8 +197,8 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
                               ? `CC ${order.customer_document}`
                               : null,
                             order.customer_city,
-                            order.customer_neighborhood,
                             order.customer_address,
+                            order.customer_neighborhood,
                           ]
                             .filter(Boolean)
                             .join(" · ")}
