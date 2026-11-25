@@ -14,6 +14,10 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   CheckCircle2,
+  ChevronDown,
+  FolderTree,
+  LayoutGrid,
+  Menu,
   Search,
   ShoppingBag,
   Sparkles,
@@ -99,9 +103,14 @@ export function StorefrontClient({
   brands,
   products,
 }: StorefrontClientProps) {
-  const [filterMode, setFilterMode] = useState<"categories" | "brands">(
-    "categories"
-  );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<{
+    categories: boolean;
+    brands: boolean;
+  }>({
+    categories: true,
+    brands: true,
+  });
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [selectedBrandId, setSelectedBrandId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -150,14 +159,28 @@ export function StorefrontClient({
     return map;
   }, [brands]);
 
+  const productCounts = useMemo(() => {
+    const byCategory = new Map<string, number>();
+    const byBrand = new Map<string, number>();
+    for (const p of products) {
+      if (p.category_id) {
+        byCategory.set(p.category_id, (byCategory.get(p.category_id) ?? 0) + 1);
+      }
+      if (p.brand_id) {
+        byBrand.set(p.brand_id, (byBrand.get(p.brand_id) ?? 0) + 1);
+      }
+    }
+    return { byCategory, byBrand };
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     const q = deferredSearchQuery.trim().toLowerCase();
     return products.filter((product) => {
-      const matchesFilter =
-        filterMode === "categories"
-          ? selectedCategoryId === "all" ||
-            product.category_id === selectedCategoryId
-          : selectedBrandId === "all" || product.brand_id === selectedBrandId;
+      const matchesCategory =
+        selectedCategoryId === "all" ||
+        product.category_id === selectedCategoryId;
+      const matchesBrand =
+        selectedBrandId === "all" || product.brand_id === selectedBrandId;
 
       const brandName = product.brand_id
         ? brandMap.get(product.brand_id)?.toLowerCase() ?? ""
@@ -175,11 +198,10 @@ export function StorefrontClient({
         product.product_variants.some((v) =>
           v.shade_name.toLowerCase().includes(q)
         );
-      return matchesFilter && matchesSearch;
+      return matchesCategory && matchesBrand && matchesSearch;
     });
   }, [
     products,
-    filterMode,
     selectedCategoryId,
     selectedBrandId,
     deferredSearchQuery,
@@ -271,6 +293,40 @@ export function StorefrontClient({
     updateCart(() => []);
   };
 
+  const scrollToCatalog = () => {
+    document
+      .getElementById("catalogo")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedCategoryId("all");
+    setSelectedBrandId("all");
+    setMenuOpen(false);
+    scrollToCatalog();
+  };
+
+  const handleSelectCategory = (categoryId: string) => {
+    setSelectedCategoryId(categoryId);
+    setSelectedBrandId("all");
+    setMenuOpen(false);
+    scrollToCatalog();
+  };
+
+  const handleSelectBrand = (brandId: string) => {
+    setSelectedBrandId(brandId);
+    setSelectedCategoryId("all");
+    setMenuOpen(false);
+    scrollToCatalog();
+  };
+
+  const activeFilterLabel =
+    selectedCategoryId !== "all"
+      ? `Categoría: ${categoryMap.get(selectedCategoryId) ?? ""}`
+      : selectedBrandId !== "all"
+      ? `Marca: ${brandMap.get(selectedBrandId) ?? ""}`
+      : null;
+
   return (
     <div className="flex min-h-screen flex-col bg-white text-[#2D2226]">
       {/* Barra superior de beneficio mayorista con brillo sutil */}
@@ -284,10 +340,28 @@ export function StorefrontClient({
         </div>
       </div>
 
-      {/* Header con logo centrado */}
+      {/* Header con selector superior izquierdo, logo centrado y carrito a la derecha */}
       <header className="sticky top-0 z-40 border-b border-[#FAD4E4]/80 bg-white/92 backdrop-blur-md">
         <div className="mx-auto grid max-w-7xl grid-cols-3 items-center px-4 py-2.5 sm:px-6 lg:px-8">
-          <div aria-hidden="true" />
+          <div className="flex items-center justify-start">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-expanded={menuOpen}
+              aria-label="Abrir menú de tienda"
+              className="relative flex cursor-pointer items-center gap-2 rounded-2xl bg-[#FFF1F5] px-3.5 py-2 text-sm font-semibold text-[#2D2226] ring-1 ring-[#FAD4E4] transition-all hover:-translate-y-0.5 hover:bg-[#FAD4E4]/50 hover:shadow-sm sm:gap-2.5 sm:px-4 sm:py-2.5"
+            >
+              <Menu className="h-4 w-4 text-[#D85C8A]" />
+              <span className="text-xs sm:text-sm">Tienda</span>
+              <ChevronDown className="hidden h-3.5 w-3.5 text-[#B94470] sm:inline" />
+              {activeFilterLabel && (
+                <span
+                  aria-hidden="true"
+                  className="h-2 w-2 rounded-full bg-[#D85C8A]"
+                />
+              )}
+            </button>
+          </div>
 
           <div className="flex justify-center">
             <Link
@@ -329,6 +403,204 @@ export function StorefrontClient({
           </div>
         </div>
       </header>
+
+      {/* Menú lateral izquierdo desplegable con desglose de Categorías y Marcas */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-50 flex justify-start bg-[#2D2226]/40 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Explorar contenido de la tienda"
+        >
+          <aside className="flex h-full w-full max-w-xs flex-col bg-white shadow-2xl">
+            {/* Cabecera del menú */}
+            <div className="flex items-center justify-between border-b border-[#FAD4E4] bg-[#FFF1F5] px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 overflow-hidden rounded-xl border border-[#FAD4E4] bg-[#FFA6DA]">
+                  <Image
+                    src="/zoe-logo.jpg"
+                    alt={settings.store_name || "ZOÉ COSMETICS"}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--font-playfair)] text-base font-bold leading-tight text-[#2D2226]">
+                    {settings.store_name || "ZOÉ COSMETICS"}
+                  </p>
+                  <p className="text-[11px] text-[#B94470]">
+                    Explorar catálogo
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Cerrar menú"
+                className="cursor-pointer rounded-full p-2 text-[#2D2226]/70 transition-colors hover:bg-[#FAD4E4]/60 hover:text-[#2D2226]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Contenido desglosado */}
+            <nav
+              className="flex-1 space-y-4 overflow-y-auto p-4"
+              aria-label="Navegación de categorías y marcas"
+            >
+              {/* Opción: Todo el catálogo */}
+              <button
+                type="button"
+                onClick={handleSelectAll}
+                className={`flex w-full cursor-pointer items-center justify-between rounded-2xl px-3.5 py-3 text-left text-sm font-semibold transition-colors ${
+                  selectedCategoryId === "all" && selectedBrandId === "all"
+                    ? "bg-[#D85C8A] text-white shadow-xs"
+                    : "bg-[#FFF1F5]/70 text-[#2D2226] hover:bg-[#FAD4E4]/55"
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <LayoutGrid className="h-4 w-4" />
+                  Ver todo el catálogo
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                    selectedCategoryId === "all" && selectedBrandId === "all"
+                      ? "bg-white/25 text-white"
+                      : "bg-white text-[#B94470]"
+                  }`}
+                >
+                  {products.length}
+                </span>
+              </button>
+
+              {/* Desglose: Categorías */}
+              <div className="overflow-hidden rounded-2xl border border-[#FAD4E4]/80 bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenSection((prev) => ({
+                      ...prev,
+                      categories: !prev.categories,
+                    }))
+                  }
+                  aria-expanded={openSection.categories}
+                  className="flex w-full cursor-pointer items-center justify-between bg-[#FFF1F5]/65 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[#B94470] hover:bg-[#FFF1F5]"
+                >
+                  <span className="flex items-center gap-2">
+                    <FolderTree className="h-4 w-4 text-[#D85C8A]" />
+                    Categorías
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      openSection.categories ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {openSection.categories && (
+                  <ul className="divide-y divide-[#FAD4E4]/40 p-2">
+                    {categories.map((category) => {
+                      const active = selectedCategoryId === category.id;
+                      const count =
+                        productCounts.byCategory.get(category.id) ?? 0;
+                      return (
+                        <li key={category.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectCategory(category.id)}
+                            className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                              active
+                                ? "bg-[#D85C8A] font-semibold text-white"
+                                : "font-medium text-[#2D2226] hover:bg-[#FFF1F5]"
+                            }`}
+                          >
+                            <span>{category.name}</span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                active
+                                  ? "bg-white/20 text-white"
+                                  : "bg-[#FFF1F5] text-[#B94470]"
+                              }`}
+                            >
+                              {count}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              {/* Desglose: Marcas */}
+              <div className="overflow-hidden rounded-2xl border border-[#FAD4E4]/80 bg-white">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenSection((prev) => ({
+                      ...prev,
+                      brands: !prev.brands,
+                    }))
+                  }
+                  aria-expanded={openSection.brands}
+                  className="flex w-full cursor-pointer items-center justify-between bg-[#FFF1F5]/65 px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-[#B94470] hover:bg-[#FFF1F5]"
+                >
+                  <span className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-[#D85C8A]" />
+                    Marcas
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      openSection.brands ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {openSection.brands && (
+                  <ul className="divide-y divide-[#FAD4E4]/40 p-2">
+                    {brands.map((brand) => {
+                      const active = selectedBrandId === brand.id;
+                      const count = productCounts.byBrand.get(brand.id) ?? 0;
+                      return (
+                        <li key={brand.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectBrand(brand.id)}
+                            className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                              active
+                                ? "bg-[#D85C8A] font-semibold text-white"
+                                : "font-medium text-[#2D2226] hover:bg-[#FFF1F5]"
+                            }`}
+                          >
+                            <span>{brand.name}</span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                active
+                                  ? "bg-white/20 text-white"
+                                  : "bg-[#FFF1F5] text-[#B94470]"
+                              }`}
+                            >
+                              {count}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </nav>
+          </aside>
+
+          {/* Área clicable para cerrar */}
+          <div
+            className="flex-1"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden="true"
+          />
+        </div>
+      )}
 
       {/* Hero femenino pastel con logo destacado y objetos dinámicos */}
       <section className="relative overflow-hidden border-b border-[#FAD4E4]/60 bg-gradient-to-b from-[#FFF1F5] via-[#FFF8FA] to-white">
@@ -376,135 +648,59 @@ export function StorefrontClient({
         </div>
       </section>
 
-      {/* Catálogo: buscador + filtros de categorías + grilla */}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
-        {/* Controles de búsqueda y selector Categorías / Marcas */}
-        <div className="space-y-3.5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {/* Selector de modo: Categorías vs Marcas */}
-            <div
-              className="inline-flex w-full rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/75 p-1 sm:w-auto"
-              role="tablist"
-              aria-label="Modo de exploración"
-            >
+      {/* Catálogo limpio: buscador + cuadrícula */}
+      <main
+        id="catalogo"
+        className="mx-auto w-full max-w-7xl flex-1 scroll-mt-20 px-4 py-8 sm:px-6 lg:px-8"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#2D2226]">
+              Catálogo
+            </h2>
+            {activeFilterLabel ? (
               <button
                 type="button"
-                role="tab"
-                aria-selected={filterMode === "categories"}
                 onClick={() => {
-                  setFilterMode("categories");
+                  setSelectedCategoryId("all");
                   setSelectedBrandId("all");
                 }}
-                className={`flex-1 cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-initial sm:text-sm ${
-                  filterMode === "categories"
-                    ? "bg-[#D85C8A] text-white shadow-xs"
-                    : "text-[#2D2226]/75 hover:text-[#2D2226]"
-                }`}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-[#D85C8A] px-3.5 py-1 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-[#B94470]"
               >
-                Por categorías
+                <span>{activeFilterLabel}</span>
+                <X className="h-3.5 w-3.5" />
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={filterMode === "brands"}
-                onClick={() => {
-                  setFilterMode("brands");
-                  setSelectedCategoryId("all");
-                }}
-                className={`flex-1 cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition-all sm:flex-initial sm:text-sm ${
-                  filterMode === "brands"
-                    ? "bg-[#D85C8A] text-white shadow-xs"
-                    : "text-[#2D2226]/75 hover:text-[#2D2226]"
-                }`}
-              >
-                Por marcas
-              </button>
-            </div>
-
-            {/* Buscador */}
-            <div className="relative w-full sm:w-72">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#D85C8A]" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar producto, marca o tono..."
-                className="w-full rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/40 py-2.5 pl-10 pr-9 text-sm text-[#2D2226] placeholder:text-[#2D2226]/45 focus:border-[#D85C8A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  aria-label="Limpiar búsqueda"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-[#2D2226]/45 hover:text-[#2D2226]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            ) : (
+              <span className="rounded-full bg-[#FFF1F5] px-3 py-1 text-xs font-medium text-[#B94470]">
+                {filteredProducts.length} productos
+              </span>
+            )}
           </div>
 
-          {/* Chips de Categorías o Marcas según la elección */}
-          {filterMode === "categories" ? (
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Buscador */}
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#D85C8A]" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar producto, marca o tono..."
+              className="w-full rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/40 py-2.5 pl-10 pr-9 text-sm text-[#2D2226] placeholder:text-[#2D2226]/45 focus:border-[#D85C8A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
+            />
+            {searchQuery && (
               <button
                 type="button"
-                onClick={() => setSelectedCategoryId("all")}
-                className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
-                  selectedCategoryId === "all"
-                    ? "bg-[#D85C8A] text-white shadow-sm"
-                    : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
-                }`}
+                onClick={() => setSearchQuery("")}
+                aria-label="Limpiar búsqueda"
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-[#2D2226]/45 hover:text-[#2D2226]"
               >
-                Todas las categorías
+                <X className="h-4 w-4" />
               </button>
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => setSelectedCategoryId(category.id)}
-                  className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
-                    selectedCategoryId === category.id
-                      ? "bg-[#D85C8A] text-white shadow-sm"
-                      : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
-                  }`}
-                >
-                  {category.name}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedBrandId("all")}
-                className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
-                  selectedBrandId === "all"
-                    ? "bg-[#D85C8A] text-white shadow-sm"
-                    : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
-                }`}
-              >
-                Todas las marcas
-              </button>
-              {brands.map((brand) => (
-                <button
-                  key={brand.id}
-                  type="button"
-                  onClick={() => setSelectedBrandId(brand.id)}
-                  className={`cursor-pointer rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
-                    selectedBrandId === brand.id
-                      ? "bg-[#D85C8A] text-white shadow-sm"
-                      : "bg-[#FFF1F5] text-[#2D2226] hover:bg-[#FAD4E4]/70"
-                  }`}
-                >
-                  {brand.name}
-                </button>
-              ))}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Estado del carrito en móvil si tiene ítems */}
+        {/* Estado del carrito si tiene ítems */}
         {totalItemsCount > 0 && (
           <div className="mt-5 flex items-center justify-between rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5] px-4 py-3 text-xs sm:text-sm">
             <div>
@@ -534,9 +730,9 @@ export function StorefrontClient({
           </div>
         )}
 
-        {/* Grilla de productos */}
+        {/* Cuadrícula de productos */}
         {filteredProducts.length > 0 ? (
-          <div className="mt-7 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
             {filteredProducts.map((product, index) => (
               <ProductCard
                 key={product.id}
@@ -562,7 +758,8 @@ export function StorefrontClient({
               No encontramos productos
             </h3>
             <p className="mt-1 text-sm text-[#2D2226]/65">
-              Prueba con otro nombre o selecciona otra categoría o marca.
+              Prueba con otro nombre o selecciona otra opción en el menú
+              superior izquierdo.
             </p>
             {(searchQuery ||
               selectedCategoryId !== "all" ||
@@ -614,7 +811,7 @@ export function StorefrontClient({
       {/* Toast dinámico al agregar un tono al carrito */}
       {toast && !cartOpen && (
         <div className="animate-zoe-pop-in fixed bottom-20 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-[#FAD4E4] bg-white/95 px-4 py-3 shadow-[0_12px_36px_rgba(216,92,138,0.22)] backdrop-blur-md sm:bottom-6 sm:left-auto sm:right-6 sm:translate-x-0">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
             <span
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-xs"
               style={{ backgroundColor: toast.shadeHex }}
