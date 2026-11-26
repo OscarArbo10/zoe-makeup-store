@@ -10,6 +10,7 @@ import {
   EyeOff,
   ImagePlus,
   Loader2,
+  Minus,
   Palette,
   Plus,
   Save,
@@ -554,6 +555,33 @@ export function ProductsTab({
     }
   };
 
+  const handleQuickAdjustStock = async (
+    variant: ProductVariant,
+    delta: number
+  ) => {
+    const nextStock = Math.max(0, variant.stock + delta);
+    if (nextStock === variant.stock) return;
+    setBusyId(variant.id);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("product_variants")
+        .update({ stock: nextStock })
+        .eq("id", variant.id);
+      if (error) throw new Error(error.message);
+      await Promise.all([onRefresh(), revalidateCatalog()]);
+    } catch (err) {
+      notify(
+        "error",
+        err instanceof Error
+          ? err.message
+          : "No se pudo actualizar el stock."
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const categoryNameMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const c of categories) {
@@ -629,6 +657,11 @@ export function ProductsTab({
                 ? 1
                 : 0;
             const coverUrl = product.image_urls?.[0] || product.image_url;
+            const totalStock = product.product_variants.reduce(
+              (sum, v) => sum + Math.max(0, v.stock),
+              0
+            );
+            const singleVariant = product.product_variants[0] ?? null;
 
             return (
               <div
@@ -704,17 +737,37 @@ export function ProductsTab({
                         {product.has_shades === false ? (
                           <span>
                             Stock:{" "}
-                            <strong className="text-[#2D2226]">
-                              {product.product_variants[0]?.stock ?? 0}
+                            <strong
+                              className={
+                                totalStock > 0
+                                  ? "text-emerald-700"
+                                  : "text-rose-600"
+                              }
+                            >
+                              {totalStock}
                             </strong>
                           </span>
                         ) : (
-                          <span>
-                            Tonos:{" "}
-                            <strong className="text-[#2D2226]">
-                              {product.product_variants.length}
-                            </strong>
-                          </span>
+                          <>
+                            <span>
+                              Tonos:{" "}
+                              <strong className="text-[#2D2226]">
+                                {product.product_variants.length}
+                              </strong>
+                            </span>
+                            <span>
+                              Stock total:{" "}
+                              <strong
+                                className={
+                                  totalStock > 0
+                                    ? "text-emerald-700"
+                                    : "text-rose-600"
+                                }
+                              >
+                                {totalStock}
+                              </strong>
+                            </span>
+                          </>
                         )}
                       </div>
                     </div>
@@ -723,9 +776,45 @@ export function ProductsTab({
                   {/* Acciones del producto */}
                   <div className="flex flex-wrap items-center gap-2">
                     {product.has_shades === false ? (
-                      <span className="rounded-xl border border-[#FAD4E4] bg-[#FFF1F5]/70 px-3 py-2 text-xs font-semibold text-[#B94470]">
-                        Sin tonos
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-xl border border-[#FAD4E4] bg-[#FFF1F5]/70 px-3 py-2 text-xs font-semibold text-[#B94470]">
+                          Sin tonos
+                        </span>
+                        {singleVariant && (
+                          <div className="flex items-center rounded-xl border border-[#FAD4E4] bg-white">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleQuickAdjustStock(singleVariant, -1)
+                              }
+                              disabled={
+                                busyId === singleVariant.id ||
+                                singleVariant.stock <= 0
+                              }
+                              title="Restar 1 al stock"
+                              aria-label={`Restar stock de ${product.name}`}
+                              className="cursor-pointer rounded-l-xl p-2 text-[#2D2226]/70 hover:bg-[#FFF1F5] hover:text-[#D85C8A] disabled:cursor-not-allowed disabled:opacity-35"
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </button>
+                            <span className="min-w-7 text-center text-xs font-bold text-[#2D2226]">
+                              {singleVariant.stock}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleQuickAdjustStock(singleVariant, 1)
+                              }
+                              disabled={busyId === singleVariant.id}
+                              title="Sumar 1 al stock"
+                              aria-label={`Sumar stock de ${product.name}`}
+                              className="cursor-pointer rounded-r-xl p-2 text-[#2D2226]/70 hover:bg-[#FFF1F5] hover:text-[#D85C8A] disabled:opacity-35"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -845,6 +934,34 @@ export function ProductsTab({
                             </div>
 
                             <div className="flex shrink-0 items-center gap-1">
+                              <div className="mr-1 flex items-center rounded-lg border border-[#FAD4E4] bg-[#FFF1F5]/50">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleQuickAdjustStock(variant, -1)
+                                  }
+                                  disabled={
+                                    busyId === variant.id || variant.stock <= 0
+                                  }
+                                  title="Restar 1 al stock"
+                                  aria-label={`Restar stock de ${variant.shade_name}`}
+                                  className="cursor-pointer p-1 text-[#2D2226]/65 hover:text-[#D85C8A] disabled:cursor-not-allowed disabled:opacity-35"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleQuickAdjustStock(variant, 1)
+                                  }
+                                  disabled={busyId === variant.id}
+                                  title="Sumar 1 al stock"
+                                  aria-label={`Sumar stock de ${variant.shade_name}`}
+                                  className="cursor-pointer p-1 text-[#2D2226]/65 hover:text-[#D85C8A] disabled:opacity-35"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </button>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => openEditVariant(variant)}

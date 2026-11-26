@@ -15,7 +15,7 @@ import {
   type OrderWithItems,
 } from "@/types/database";
 import { formatCOP, sanitizePhoneForWhatsApp } from "@/lib/format";
-import { createClient } from "@/lib/supabase/client";
+import { updateOrderStatus } from "@/app/admin/actions";
 
 interface OrdersTabProps {
   orders: OrderWithItems[];
@@ -27,6 +27,7 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -47,13 +48,16 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
   ) => {
     setUpdatingId(orderId);
     setErrorMsg(null);
+    setFeedbackMsg(null);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("orders")
-        .update({ status: newStatus })
-        .eq("id", orderId);
-      if (error) throw new Error(error.message);
+      const result = await updateOrderStatus(orderId, newStatus);
+      if (!result.ok) {
+        setErrorMsg(result.error);
+        return;
+      }
+      if (result.stockAction !== "none") {
+        setFeedbackMsg(result.message);
+      }
       await onRefresh();
     } catch (err) {
       setErrorMsg(
@@ -91,7 +95,8 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
         </h2>
         <p className="text-xs text-[#2D2226]/65 sm:text-sm">
           Consulta el detalle de productos y tonos, escribe al cliente por
-          WhatsApp y actualiza el estado.
+          WhatsApp y actualiza el estado. Al confirmar un pedido se descuenta el
+          stock automáticamente (y se restaura si se cancela).
         </p>
       </div>
 
@@ -130,6 +135,12 @@ export function OrdersTab({ orders, storeName, onRefresh }: OrdersTabProps) {
       {errorMsg && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {errorMsg}
+        </div>
+      )}
+
+      {feedbackMsg && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+          {feedbackMsg}
         </div>
       )}
 

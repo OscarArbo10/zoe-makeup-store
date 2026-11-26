@@ -324,7 +324,9 @@ export function AdminDashboard({
           <OrdersTab
             orders={orders}
             storeName={settings.store_name || "ZOÉ COSMETICS"}
-            onRefresh={refreshOrders}
+            onRefresh={async () => {
+              await Promise.all([refreshOrders(), refreshProducts()]);
+            }}
           />
         )}
         {activeTab === "settings" && (

@@ -45,8 +45,11 @@ export const ProductCard = memo(function ProductCard({
     galleryImages.length > 0 ? photoIndex % galleryImages.length : 0;
   const displayImageUrl = galleryImages[safePhotoIndex] ?? null;
   const hasMultiplePhotos = galleryImages.length > 1;
-  const isAllOutOfStock =
-    activeVariants.length === 0 || activeVariants.every((v) => v.stock <= 0);
+  const totalStock = activeVariants.reduce(
+    (sum, v) => sum + Math.max(0, v.stock),
+    0
+  );
+  const isAllOutOfStock = activeVariants.length === 0 || totalStock <= 0;
 
   const goPrevPhoto = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -184,9 +187,15 @@ export const ProductCard = memo(function ProductCard({
           </div>
         )}
 
-        {isAllOutOfStock && (
+        {isAllOutOfStock ? (
           <div className="absolute inset-x-0 bottom-0 bg-[#2D2226]/70 py-1 text-center text-[11px] font-medium text-white backdrop-blur-xs sm:py-1.5 sm:text-xs">
             Agotado
+          </div>
+        ) : (
+          <div className="pointer-events-none absolute right-2 bottom-2 sm:right-3 sm:bottom-3">
+            <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-[#2D2226]/80 shadow-xs backdrop-blur-sm sm:px-2.5 sm:py-1 sm:text-[11px]">
+              Stock: {totalStock}
+            </span>
           </div>
         )}
       </div>
