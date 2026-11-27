@@ -16,6 +16,8 @@ const DEFAULT_SETTINGS: StoreSettings = {
   featured_product_id: null,
   promo_title: null,
   promo_text: null,
+  instagram_url: null,
+  tiktok_url: null,
   updated_at: "2026-01-01T00:00:00.000Z",
 };
 
@@ -35,9 +37,7 @@ async function getCatalogData(): Promise<{
     await Promise.all([
       supabase
         .from("store_settings")
-        .select(
-          "id, store_name, wholesale_threshold, whatsapp_number, featured_product_id, promo_title, promo_text, updated_at"
-        )
+        .select("*")
         .eq("id", 1)
         .maybeSingle(),
       supabase

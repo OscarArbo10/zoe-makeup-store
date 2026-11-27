@@ -15,6 +15,7 @@ import Link from "next/link";
 import {
   CheckCircle2,
   ArrowLeft,
+  ChevronLeft,
   ChevronRight,
   LayoutGrid,
   Menu,
@@ -87,6 +88,22 @@ function getServerCartSnapshot(): CartItem[] {
   return EMPTY_CART;
 }
 
+const PRODUCTS_PER_PAGE = 20;
+
+function normalizeSocialUrl(
+  raw: string | null | undefined,
+  platform: "instagram" | "tiktok"
+): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const handle = trimmed.replace(/^@+/, "");
+  if (!handle) return null;
+  return platform === "instagram"
+    ? `https://www.instagram.com/${handle}`
+    : `https://www.tiktok.com/@${handle}`;
+}
+
 function writeCartStorage(nextItems: CartItem[]) {
   try {
     const raw = JSON.stringify(nextItems);
@@ -117,6 +134,7 @@ export function StorefrontClient({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [selectedBrandId, setSelectedBrandId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] =
     useState<ProductWithVariants | null>(null);
@@ -245,6 +263,31 @@ export function StorefrontClient({
     categoryMap,
   ]);
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)
+  );
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safePage - 1) * PRODUCTS_PER_PAGE;
+  const paginatedProducts = filteredProducts.slice(
+    pageStartIndex,
+    pageStartIndex + PRODUCTS_PER_PAGE
+  );
+
+  const goToPage = (page: number) => {
+    const clamped = Math.max(1, Math.min(totalPages, page));
+    setCurrentPage(clamped);
+    document
+      .getElementById("catalogo")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const instagramHref = normalizeSocialUrl(
+    settings.instagram_url,
+    "instagram"
+  );
+  const tiktokHref = normalizeSocialUrl(settings.tiktok_url, "tiktok");
+
   const retailSubtotal = useMemo(
     () =>
       cartItems.reduce((sum, item) => sum + item.retailPrice * item.quantity, 0),
@@ -346,6 +389,7 @@ export function StorefrontClient({
   const handleSelectAll = () => {
     setSelectedCategoryId("all");
     setSelectedBrandId("all");
+    setCurrentPage(1);
     setMenuOpen(false);
     scrollToCatalog();
   };
@@ -353,6 +397,7 @@ export function StorefrontClient({
   const handleSelectBrandCategory = (brandId: string, categoryId: string) => {
     setSelectedBrandId(brandId);
     setSelectedCategoryId(categoryId);
+    setCurrentPage(1);
     setMenuOpen(false);
     setMenuBrandId(null);
     scrollToCatalog();
@@ -366,6 +411,7 @@ export function StorefrontClient({
   const handleSelectBrand = (brandId: string) => {
     setSelectedBrandId(brandId);
     setSelectedCategoryId("all");
+    setCurrentPage(1);
     setMenuOpen(false);
     setMenuBrandId(null);
     scrollToCatalog();
@@ -815,7 +861,10 @@ export function StorefrontClient({
             <input
               type="search"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Buscar producto, marca o tono..."
               className="w-full rounded-2xl border border-[#FAD4E4] bg-[#FFF1F5]/40 py-2.5 pl-10 pr-9 text-sm text-[#2D2226] placeholder:text-[#2D2226]/45 focus:border-[#D85C8A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D85C8A]/20"
             />
@@ -864,25 +913,87 @@ export function StorefrontClient({
 
         {/* Cuadrícula de productos */}
         {filteredProducts.length > 0 ? (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredProducts.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                categoryName={
-                  product.category_id
-                    ? categoryMap.get(product.category_id)
-                    : undefined
-                }
-                brandName={
-                  product.brand_id ? brandMap.get(product.brand_id) : undefined
-                }
-                wholesaleActive={wholesaleActive}
-                index={index}
-                onSelect={setSelectedProduct}
-              />
-            ))}
-          </div>
+          <>
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+              {paginatedProducts.map((product, index) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  categoryName={
+                    product.category_id
+                      ? categoryMap.get(product.category_id)
+                      : undefined
+                  }
+                  brandName={
+                    product.brand_id ? brandMap.get(product.brand_id) : undefined
+                  }
+                  wholesaleActive={wholesaleActive}
+                  index={index}
+                  onSelect={setSelectedProduct}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-[#FAD4E4]/60 pt-6 sm:flex-row">
+                <p className="text-xs text-[#2D2226]/65">
+                  Mostrando{" "}
+                  <strong className="text-[#2D2226]">
+                    {pageStartIndex + 1}–
+                    {Math.min(
+                      pageStartIndex + PRODUCTS_PER_PAGE,
+                      filteredProducts.length
+                    )}
+                  </strong>{" "}
+                  de{" "}
+                  <strong className="text-[#2D2226]">
+                    {filteredProducts.length}
+                  </strong>{" "}
+                  productos
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(safePage - 1)}
+                    disabled={safePage <= 1}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-[#FAD4E4] bg-white px-3 py-1.5 text-xs font-semibold text-[#2D2226] transition-colors hover:bg-[#FFF1F5] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Anterior
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => goToPage(page)}
+                        aria-current={page === safePage ? "page" : undefined}
+                        className={`h-8 min-w-8 cursor-pointer rounded-xl px-2.5 text-xs font-bold transition-colors ${
+                          page === safePage
+                            ? "bg-[#D85C8A] text-white shadow-xs"
+                            : "border border-[#FAD4E4] bg-white text-[#2D2226] hover:bg-[#FFF1F5]"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => goToPage(safePage + 1)}
+                    disabled={safePage >= totalPages}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-[#FAD4E4] bg-white px-3 py-1.5 text-xs font-semibold text-[#2D2226] transition-colors hover:bg-[#FFF1F5] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Siguiente
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="mt-12 rounded-3xl border border-dashed border-[#FAD4E4] bg-[#FFF1F5]/40 px-6 py-16 text-center">
             <Sparkles className="mx-auto h-8 w-8 text-[#D85C8A]/70" />
@@ -914,7 +1025,7 @@ export function StorefrontClient({
 
       {/* Footer */}
       <footer className="mt-12 border-t border-[#FAD4E4]/70 bg-[#FFF1F5]/50">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-[#2D2226]/65 sm:flex-row sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-6 text-xs text-[#2D2226]/65 sm:flex-row sm:px-6 lg:px-8">
           <div className="flex items-center gap-2.5">
             <Image
               src="/zoe-logo.jpg"
@@ -931,12 +1042,56 @@ export function StorefrontClient({
               . Todos los derechos reservados.
             </p>
           </div>
-          <Link
-            href="/admin"
-            className="font-medium text-[#B94470]/80 transition-colors hover:text-[#D85C8A]"
-          >
-            Panel de administración
-          </Link>
+
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            {instagramHref && (
+              <a
+                href={instagramHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2 text-xs font-semibold text-[#B94470] shadow-xs transition-all hover:-translate-y-0.5 hover:bg-[#D85C8A] hover:text-white"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="h-4 w-4 fill-none stroke-current"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                </svg>
+                Instagram
+              </a>
+            )}
+
+            {tiktokHref && (
+              <a
+                href={tiktokHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#FAD4E4] bg-white px-3.5 py-2 text-xs font-semibold text-[#2D2226] shadow-xs transition-all hover:-translate-y-0.5 hover:bg-[#2D2226] hover:text-white"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="h-4 w-4 fill-current"
+                >
+                  <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.81a8.22 8.22 0 0 0 4.76 1.51V6.87a4.84 4.84 0 0 1-1-.18Z" />
+                </svg>
+                TikTok
+              </a>
+            )}
+
+            <Link
+              href="/admin"
+              className="px-2 py-1 font-medium text-[#B94470]/80 transition-colors hover:text-[#D85C8A]"
+            >
+              Panel de administración
+            </Link>
+          </div>
         </div>
       </footer>
 

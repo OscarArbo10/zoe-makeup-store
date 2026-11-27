@@ -53,6 +53,8 @@ export interface StoreSettings {
   featured_product_id: string | null;
   promo_title: string | null;
   promo_text: string | null;
+  instagram_url?: string | null;
+  tiktok_url?: string | null;
   updated_at: string;
 }
 

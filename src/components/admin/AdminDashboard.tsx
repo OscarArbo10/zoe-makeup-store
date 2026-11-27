@@ -331,6 +331,7 @@ export function AdminDashboard({
         )}
         {activeTab === "settings" && (
           <SettingsTab
+            userEmail={userEmail}
             settings={settings}
             products={products}
             onRefresh={refreshSettings}
